@@ -218,3 +218,23 @@ Idioma: o padrão vem do servidor, `DEFAULT_LANG=pt-BR` (GET /api/config `defaul
   nenhuma requisição `exercise-media` no navegador (biblioteca com 5632 exercícios e treino rodando, miniatura neutra).
 - Observações para depois: o subtítulo da biblioteca ainda diz "5632 exercícios com animações" (string de i18n);
   a descrição dos exercícios vem em inglês (catálogo).
+
+## B1: gerador de plano (`frontend/src/lib/plan-generator.js`)
+
+- Código e testes do plano aplicados quase literais; todos os ids de `POOLS` existem em `EXIDX` e os do pool `home`
+  passam em `eqAvailable(HOME_EQUIPMENT, ...)`. Não precisou trocar nenhum id por falha de teste.
+- Dois ids trocados no pool `home` por qualidade (não por falha): `press` tinha `0334` (elevação lateral, que também
+  está no slot `lateral`) e virou `0426` (desenvolvimento em pé com halter); `push` tinha `0659` (flexão na parede,
+  fácil demais e escolhida em qualquer sessão de índice ímpar) e virou `2398` (flexão com joelhos apoiados).
+- Duração: com o descanso padrão do app (`restSec` 90 s) e ~40 s por série, as séries do plano original davam até 63 min
+  para `minutes: 45` e 35 min para `minutes: 15`. Acrescentado orçamento de séries por sessão
+  (`floor(minutes * 1.2 * 60 / 130)` = 8 / 16 / 24 séries para 15 / 30 / 45 min): se passa, tira uma série por vez do
+  fim da lista (do exercício com mais séries), nunca abaixo de 2. Efeito colateral: em 30 e 45 min, intermediário e
+  avançado convergem em volume (a diferença de nível some, só 15 min já era igual). Para manter a diferença seria preciso
+  gravar `restSec: 60` por exercício (campo já suportado em `Workout.jsx`/`ownExerciseRest`); fica como opção.
+- Exportados também `estimateMinutes`, `SLACK` (1.2), `SET_SEC`, `REST_SEC`. Testes novos: duração estimada <= `minutes`
+  x 1.2 e nenhuma rotina do mesmo plano com a mesma lista de exercícios (as 432 combinações).
+- Formato conferido com `buildStarterPlan`/`loadStarterPlan`: rotinas `{id,name,emoji,ex:[{id,sets,reps,weight}]}` e
+  `schedule [{day,routineId}]` (day 1 = segunda). Ícones `figureStrength` e `legs` existem em `components/Icon.jsx`.
+  Rotinas geradas são dados do usuário (nome literal pt-BR, como as rotinas do `starter.js`, que ficam em inglês).
+- `fitRoutines`/`substituteFor` do `starter.js` não são usados: os pools já são curados por local.
