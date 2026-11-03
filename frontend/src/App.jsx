@@ -35,6 +35,8 @@ import { installChipDrag } from './lib/hchips.js'
 import { syncPushSubscription } from './lib/push.js'
 import { MOBILE, nativePlatform } from './lib/mobile.js'
 import { isOn } from './lib/modules.js'
+import { DEMO } from './lib/demo.js'
+import { showAlcateiaQuiz, quizSynced } from './lib/quiz-gate.js'
 import { useTour, tourState, openTour, readTour, shouldOffer, resumeAt } from './lib/tour.js'
 import { exitWorkoutEdit, startFlow, beginWorkout, bwSheet } from './sheets.jsx'
 import Icon from './components/Icon.jsx'
@@ -55,6 +57,7 @@ import { useRoutineLinks } from './components/RoutineShare.jsx'
 import Login from './views/Login.jsx'
 import MobileOnboarding from './views/MobileOnboarding.jsx'
 import PermissionSteps from './views/PermissionSteps.jsx'
+import AlcateiaQuiz from './views/AlcateiaQuiz.jsx'
 import Home from './views/Home.jsx'
 import Plan from './views/Plan.jsx'
 import Workout from './views/Workout.jsx'
@@ -143,6 +146,15 @@ function Shell() {
   const isGuest = useStore(s => s.isGuest())
   const needsMobileOnboarding = useStore(s => s.needsMobileOnboarding)
   const permSteps = useStore(s => s.permSteps)
+  // Mini-quiz Alcateia (views/AlcateiaQuiz.jsx, decisions in lib/quiz-gate.js). `quizSyncedNow`: the
+  // account's copy has come from the server. Once true for an account it stays true for the session
+  // (a later offline blip must not pull the quiz out from under someone halfway through it).
+  const quizRedo = useUI(s => s.quizRedo)
+  const quizSkippedFor = useUI(s => s.quizSkippedFor)
+  const quizSyncedNow = useStore(quizSynced)
+  const quizSyncedFor = useRef(null)
+  if (quizSyncedNow && user) quizSyncedFor.current = user.id
+  if (!user) quizSyncedFor.current = null
   const langV = useLang()   // re-renders the whole shell when the language (pack) changes
   useEffect(() => { setNav(navigate) }, [navigate])
   const lastEditPath = useRef(loc.pathname)
@@ -285,14 +297,6 @@ function Shell() {
   // brings it back. Finishing stays in the workout's own header and list, not in a bottom button
   // (owner, 2026-10-14: the bottom Complete / Finish button of #563 is gone again).
   const inWorkout = loc.pathname === '/workout' && !!S.active
-  useEffect(() => {
-    document.body.classList.toggle('no-tabbar', inWorkout)
-    return () => document.body.classList.remove('no-tabbar')
-  }, [inWorkout])
-  // The chat owns the bottom of the screen as well: its composer sits where the tabs would be.
-  // The first-launch card has no tabs either: they changed the route behind it.
-  const noTabs = inWorkout || loc.pathname === '/coach' || needsMobileOnboarding || permSteps
-
   const authed = user || isGuest
   // The first setup is through (sign-in or "Use on this device", and the phone's permission
   // steps): "Want a 1-minute tour?" once, on a profile with nothing logged yet, or "Finish the
@@ -301,12 +305,26 @@ function Shell() {
   const tour = useTour()
   const tourAsked = useRef(false)
   const setupDone = authed && ready && !needsMobileOnboarding && !permSteps
+  // The first screen of a new account (or "Redo my plan" in Settings): five questions, full screen.
+  // Never for a guest or the demo, and not before the server's copy has arrived (lib/quiz-gate.js).
+  const showQuiz = showAlcateiaQuiz({
+    user, isGuest, demo: DEMO, setupDone,
+    quizDone: !!S.alcateia?.quizDone, synced: !!user && quizSyncedFor.current === user.id, skippedFor: quizSkippedFor, redo: quizRedo,
+  })
+  // The chat owns the bottom of the screen as well: its composer sits where the tabs would be.
+  // The first-launch card and the quiz have no tabs either: they changed the route behind it.
+  const noTabs = inWorkout || loc.pathname === '/coach' || needsMobileOnboarding || permSteps || showQuiz
+  // The quiz docks to the bottom edge like the workout does (body.no-tabbar: less padding under the page).
+  useEffect(() => {
+    document.body.classList.toggle('no-tabbar', inWorkout || showQuiz)
+    return () => document.body.classList.remove('no-tabbar')
+  }, [inWorkout, showQuiz])
   // A tapped NFC sticker (components/Nfc.jsx): one that opened the app waits for the setup.
   useNfcTagLinks(setupDone)
   // A friend's routine link (components/RoutineShare.jsx): the same wait for the setup.
   useRoutineLinks(setupDone)
   useEffect(() => {
-    if (!setupDone || tourAsked.current) return
+    if (!setupDone || showQuiz || tourAsked.current) return
     const tm = setTimeout(() => {
       const st = useStore.getState()
       if (tourAsked.current || tourState() || st.S.active || useUI.getState().sheets.length || /^#\/workout/.test(window.location.hash || '')) return
@@ -319,7 +337,7 @@ function Shell() {
       tourAsked.current = true
     }, 1200)
     return () => clearTimeout(tm)
-  }, [setupDone, S])
+  }, [setupDone, showQuiz, S])
   // The boot screen in index.html covers the start; it goes once there is something to show.
   useEffect(() => { if (ready || authed) hideBoot() }, [ready, authed])
   if (!ready && !authed) return (
@@ -330,7 +348,12 @@ function Shell() {
     </div>
   )
 
-  const view = l => (!authed ? <Login /> : needsMobileOnboarding ? <MobileOnboarding /> : permSteps ? <PermissionSteps /> : (
+  const view = l => (!authed ? <Login /> : needsMobileOnboarding ? <MobileOnboarding /> : permSteps ? <PermissionSteps /> : showQuiz ? (
+    <AlcateiaQuiz
+      onDone={() => { useUI.getState().closeQuizRedo(); navigate('/home', { replace: true }) }}
+      onSkip={quizRedo ? undefined : () => useUI.getState().skipQuiz(user.id)}
+      onCancel={quizRedo ? () => useUI.getState().closeQuizRedo() : undefined} />
+  ) : (
     <Routes location={l}>
       <Route path="/home" element={<Home />} />
       {/* A module switched off (Settings → Modules, lib/modules.js) takes its screens with it: the
@@ -361,7 +384,7 @@ function Shell() {
       <Route path="*" element={<Navigate to="/home" replace />} />
     </Routes>
   ))
-  const showPreview = !!preview && preview !== loc.pathname && authed && !needsMobileOnboarding && !permSteps
+  const showPreview = !!preview && preview !== loc.pathname && authed && !needsMobileOnboarding && !permSteps && !showQuiz
 
   return (
     <>
@@ -389,7 +412,7 @@ function Shell() {
           over a running workout or the first-launch screens. */}
       {authed && !needsMobileOnboarding && !permSteps && <SeasonalLayer hidden={inWorkout || loc.pathname === '/workout'} />}
       {/* Your year in openGym (components/WrappedEntry.jsx): nothing loaded until it is opened. */}
-      {authed && isOn(S, 'motivation') && <WrappedLayer ready={setupDone} />}
+      {authed && isOn(S, 'motivation') && <WrappedLayer ready={setupDone && !showQuiz} />}
     </>
   )
 }

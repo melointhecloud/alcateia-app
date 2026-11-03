@@ -26,7 +26,7 @@ vi.mock('../store/useStore.js', () => {
   return { useStore, DEF: { reminder: { time: '17:30' } }, hasData: () => false }
 })
 vi.mock('../store/useUI.js', () => {
-  const snap = () => ({ toast: mocks.toast, openSheet: render => { mocks.sheets.push(render); return { close: vi.fn() } } })
+  const snap = () => ({ toast: mocks.toast, openQuizRedo: () => mocks.quizRedo(), openSheet: render => { mocks.sheets.push(render); return { close: vi.fn() } } })
   const useUI = selector => selector ? selector(snap()) : snap()
   useUI.getState = snap
   return { useUI }
@@ -62,6 +62,7 @@ beforeEach(() => {
   mocks.push = false
   mocks.pushOn = false
   mocks.toast = vi.fn()
+  mocks.quizRedo = vi.fn()
   mocks.sheets = []
   mocks.navs = []
   Object.defineProperty(navigator, 'vibrate', { value: () => true, configurable: true, writable: true })
@@ -301,6 +302,30 @@ describe('the search query', () => {
     mount()
     expect(host.querySelector('.sp-search input').value).toBe('')
     expect(titles()).toContain('Timer alerts')
+  })
+})
+
+// Mini-quiz Alcateia: quem tem conta refaz o plano daqui (a tela cheia abre pela flag da useUI, ver
+// App.jsx e lib/quiz-gate.js). Visitante e demo não têm o quiz, então a linha nem aparece.
+describe('Redo my plan', () => {
+  it('is on the Plan page for an account and opens the quiz again', () => {
+    mocks.user = { id: 'u1', name: 'Dana' }
+    mount('plan')
+    const row = rowTitled('Redo my plan')
+    expect(row).toBeTruthy()
+    expect(row.querySelector('.lrow-s').textContent).toBe('Answer the questions again and get a new week. Your old routines stay in Plan.')
+    act(() => row.click())
+    expect(mocks.quizRedo).toHaveBeenCalledTimes(1)
+  })
+  it('is not offered to a guest', () => {
+    mocks.user = null
+    mount('plan')
+    expect(rowTitled('Redo my plan')).toBeUndefined()
+  })
+  it('is found by the search, for an account', () => {
+    expect(SEARCH.find(e => e.title === 'Redo my plan')?.page).toBe('plan')
+    expect(SEARCH.find(e => e.title === 'Redo my plan').when({ user: { id: 'u1' } })).toBe(true)
+    expect(SEARCH.find(e => e.title === 'Redo my plan').when({ user: null })).toBe(false)
   })
 })
 

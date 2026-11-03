@@ -39,9 +39,11 @@ describe('Brazilian Portuguese locale', () => {
     // The counts themselves are read off the pack rather than pinned here: a new UI string lands
     // in pt.js and pt-BR.js together and moves both, and a number in a test that every new string
     // has to be taught is a number nobody reads. What the numbers stood for is asserted above.
+    // Mudou só porque '{0} exercises with animations' saiu do pt.js (fork sem mídia, Task B3); as outras
+    // chaves novas do quiz são overrides do pt-BR.
     // If the hash fails, review the changed keys and wording before accepting a new one. From
     // frontend/: node scripts/pt-br-inheritance-fingerprint.mjs --list
-    expect(fingerprint, 'pt-PT inheritance changed; review the inherited pt-BR wording').toBe('24707d798267ce8008a451d9494564ae405158d0ea747bcd49b4f42b232854c4')
+    expect(fingerprint, 'pt-PT inheritance changed; review the inherited pt-BR wording').toBe('9ca83a672cc4ca65ad1dcbb69179db87b572f583026327758d349d1f612ef45d')
   })
 
   // pt-PT labelled Unpair 'Desfazer': Undo, in Portuguese (it is pt-BR's Undo), on the button that

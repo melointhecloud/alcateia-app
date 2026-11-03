@@ -3272,3 +3272,27 @@ button.wl-summary{width:100%;padding:0 0 10px;text-align:start;border-radius:var
   .kpis .tile{padding:10px 11px}
   .kpis .tile .v{font-size:var(--fs-title3)}
 }
+
+/* ------------------------------------------------- Alcateia mini-quiz --
+   views/AlcateiaQuiz.jsx: five questions, one per screen, then the plan it made. Full screen (no
+   tab bar, App.jsx showQuiz). The options are big buttons a thumb can find; the answer already
+   given is outlined in the accent when you come back to a question. */
+.aq{display:flex;flex-direction:column;min-height:calc(100dvh - var(--sat) - var(--conn) - 32px - var(--sab) - 40px);padding-top:8px}
+.aq-top{display:flex;flex-direction:column;gap:10px}
+.aq-bar{display:flex;gap:6px}
+.aq-bar i{flex:1;height:4px;border-radius:2px;background:var(--surface-3);transition:background var(--med) var(--ease)}
+.aq-bar i.on{background:var(--acc)}
+.aq-body{flex:1;display:flex;flex-direction:column}
+.aq-title{margin:26px 0 8px;font-size:var(--fs-large);line-height:var(--lh-tight);font-weight:700;letter-spacing:var(--ls-large);text-wrap:balance;overflow-wrap:break-word}
+.aq-title:focus{outline:none}
+.aq-lead{margin:0 0 22px;color:var(--label-2);font-size:var(--fs-callout);line-height:1.4}
+.aq-opts{gap:10px}
+.btn.aq-opt{justify-content:flex-start;text-align:start;min-height:58px;padding:14px 18px;background:var(--surface);font-weight:500;box-shadow:inset 0 0 0 1.5px transparent}
+.btn.aq-opt:active{background:var(--surface-2)}
+.btn.aq-opt.on{box-shadow:inset 0 0 0 1.5px var(--acc);background:var(--acc-soft)}
+.aq-plan .item{gap:14px}
+.aq-day{flex:none;min-width:44px;text-align:center;font-size:var(--fs-subhead);font-weight:700;color:var(--acc-ink);letter-spacing:.02em;text-transform:uppercase}
+.aq-day:empty::before{content:'\00b7'}
+.aq-foot{margin-top:auto;padding-top:22px;display:flex;flex-direction:column;gap:6px}
+.aq-exit{display:flex;justify-content:center;margin-top:4px;padding-bottom:6px}
+.aq-exit .btn{width:auto;font-size:var(--fs-subhead)}

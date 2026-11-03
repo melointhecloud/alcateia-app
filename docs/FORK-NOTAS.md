@@ -216,7 +216,7 @@ Idioma: o padrão vem do servidor, `DEFAULT_LANG=pt-BR` (GET /api/config `defaul
   cadastro sem código responde 403 `invite`.
 - Verificado local (build sem mudar Dockerfile): `/api/health` ok, `/exercise-media/...` 404, `SEM_MIDIA` no web,
   nenhuma requisição `exercise-media` no navegador (biblioteca com 5632 exercícios e treino rodando, miniatura neutra).
-- Observações para depois: o subtítulo da biblioteca ainda diz "5632 exercícios com animações" (string de i18n);
+- Observações para depois: (o subtítulo da biblioteca que dizia "com animações" foi corrigido na B3);
   a descrição dos exercícios vem em inglês (catálogo).
 
 ## B1: gerador de plano (`frontend/src/lib/plan-generator.js`)
@@ -260,3 +260,19 @@ Idioma: o padrão vem do servidor, `DEFAULT_LANG=pt-BR` (GET /api/config `defaul
 - **API**: `PUT /api/data` não tem allowlist de chaves (só valida `workouts`/`routines` como listas e exige alguma chave
   além de `_rev`/`_ts`); `stampPut` carimba como configuração e `keepUnknown` devolve a chave a um app antigo que não a
   conhece. Teste novo: `api/test/alcateia-state.test.js`.
+
+## B3: mini-quiz (`frontend/src/views/AlcateiaQuiz.jsx`)
+
+- Chaves do `t()` em inglês, como no resto do app; os rótulos exatos do plano (`Tonificar o corpo`, `Em casa`...)
+  vêm do pack pt-BR, que herda de pt. O teste fixa o idioma com `setLang('pt-BR')`. As 21 chaves novas estão em
+  todos os 19 packs; no pt-BR são `PT_BR_OVERRIDES` (o fingerprint de herança só mudou por sair uma chave).
+  Reaproveitadas: `Lose fat`, `At the gym`, `{0} days`, `{0} minutes`, `Back`, `Start`, `Cancel`, `How many days a week?`.
+  `Advanced` não serve como nível (em de/it/ru etc. significa "avançado" de configurações): usa `Experienced`.
+- Porta de entrada (App.jsx + `lib/quiz-gate.js`, testada): só conta logada (nunca visitante nem demo), depois do
+  setup, e só depois do primeiro pull (`sync.status === 'ok' && lastSynced > 0`, travado por conta na sessão), para
+  não perguntar de novo a quem fez em outro aparelho. "Pular por agora" fica em `sessionStorage` (por conta) e não
+  grava `quizDone`. O convite do tour espera o quiz acabar.
+- "Refazer meu plano" (Configurações, Plano e agenda, só com conta): flag `quizRedo` na `useUI` (não sincroniza,
+  não mexe em `quizDone`), com "Cancelar". Ao concluir, vai para `#/home`. As rotinas antigas continuam; só os dias
+  da semana são trocados (regra de `applyAlcateiaPlan`).
+- Cabeçalho da biblioteca: "5632 exercícios" (sem "animações", em todos os idiomas); chaves antigas removidas dos packs.

@@ -12,6 +12,7 @@ import { REST_MAX } from '../lib/duration.js'
 import { accentValue } from '../lib/accent.js'
 import { COUNT_IN_SEC, chainCues, heldSec, phaseLeft, resumedEnd, shouldWait } from '../lib/auto-holds.js'
 import { cues, bindCueState } from '../lib/spoken-cues.js'
+import { readQuizSkip, writeQuizSkip } from '../lib/quiz-gate.js'
 
 // Timed holds that run themselves (lib/auto-holds.js): the workout screen hands in what comes
 // next and how to start it (bindAuto, views/Workout.jsx), this store runs the clocks. Without the
@@ -273,6 +274,14 @@ function endTone(enabled, kind) {
 
 export const useUI = create((set, get) => ({
   sheets: [],          // { id, render:(close)=>JSX, kind:'sheet'|'center', locked, wide }
+  // Mini-quiz Alcateia (views/AlcateiaQuiz.jsx, lib/quiz-gate.js). `quizRedo`: Configurações pediu
+  // para refazer o plano. `quizSkippedFor`: a conta que tocou em "Pular por agora" nesta sessão.
+  // Nada disso vai para o estado sincronizado: só `S.alcateia` grava que o quiz foi feito.
+  quizRedo: false,
+  quizSkippedFor: readQuizSkip(),
+  openQuizRedo: () => set({ quizRedo: true }),
+  closeQuizRedo: () => set({ quizRedo: false }),
+  skipQuiz: uid => { writeQuizSkip(uid); set({ quizSkippedFor: uid }) },
   toastMsg: '',
   toastAction: null,   // { label, run, id } while the toast offers an action (Undo)
   swipeHint: null,     // { idx, i, id }: the set row showing the one-time swipe hint (Workout.jsx)

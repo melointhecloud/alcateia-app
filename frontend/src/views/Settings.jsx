@@ -772,6 +772,10 @@ export default function Settings({ page = null, find = null, via = null, entryKe
         {/* The target range of weekly sets for each main muscle (lib/muscle-targets.js). */}
         <Row icon="slider" iconTint="var(--teal)" title={t('Weekly sets per muscle')} subtitle={t('The range each muscle aims for')} accessory="chevron" onClick={muscleTargetsSheet} />
         <Row icon="clipboard" iconTint="var(--green)" title={t('Load starter plan')} accessory="chevron" onClick={starterPlanSheet} />
+        {/* Mini-quiz Alcateia (views/AlcateiaQuiz.jsx): a tela cheia abre pela flag da useUI (App.jsx).
+            Só para quem tem conta: o quiz não existe para visitante nem na demo (lib/quiz-gate.js). */}
+        {!!user && !DEMO && <Row icon="sparkles" iconTint="var(--green)" title={t('Redo my plan')} subtitle={t('Answer the questions again and get a new week. Your old routines stay in Plan.')}
+          accessory="chevron" onClick={() => useUI.getState().openQuizRedo()} />}
       </Section>
     </>,
 

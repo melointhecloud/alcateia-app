@@ -118,23 +118,38 @@ describe('Library header count', () => {
   afterEach(() => _setLangState('en', {}, null, null))
 
   it('shows only the catalogue while you have no exercises of your own', () => {
-    expect(sub(render())).toBe(`${EXDB.length} exercises with animations`)
+    expect(sub(render())).toBe(`${EXDB.length} exercises`)
+  })
+
+  // O fork não tem mídia de exercício (a Gym visual não vem junto): o cabeçalho não pode prometer
+  // animações, em nenhum idioma, e as frases antigas não ficam nos packs como lixo.
+  it('does not promise animations: the fork ships no exercise media, in any language', async () => {
+    const { readdirSync } = await import('node:fs')
+    const dir = resolve(process.cwd(), 'src/locales')
+    const old = ['{0} exercises with animations', '{1} animated exercises + 1 of your own', '{1} animated exercises + {0} of your own']
+    for (const f of readdirSync(dir).filter(x => x.endsWith('.js'))) {
+      const pack = (await import('../locales/' + f)).default
+      for (const k of old) expect(k in pack, `${f}: ${k}`).toBe(false)
+      expect(pack['{1} exercises + 1 of your own'], f).toBeTruthy()
+      expect(pack['{1} exercises + {0} of your own'], f).toBeTruthy()
+    }
+    expect(readFileSync(resolve(process.cwd(), 'src/views/Library.jsx'), 'utf8')).not.toMatch(/t\(\s*'[^']*animat/i)
   })
 
   it('adds "+ 1 of your own" for a single custom exercise', () => {
     mocks.S.customEx = own(1)
-    expect(sub(render())).toBe(`${EXDB.length} animated exercises + 1 of your own`)
+    expect(sub(render())).toBe(`${EXDB.length} exercises + 1 of your own`)
   })
 
   it('adds the count for several custom exercises', () => {
     mocks.S.customEx = own(5)
-    expect(sub(render())).toBe(`${EXDB.length} animated exercises + 5 of your own`)
+    expect(sub(render())).toBe(`${EXDB.length} exercises + 5 of your own`)
   })
 
   it('uses the language\'s own plural forms (Russian: 1 своё, 2 своих, 5 своих)', async () => {
     const { default: ru } = await import('../locales/ru.js')
     _setLangState('ru', ru, null, null)
-    const forms = ru['{1} animated exercises + {0} of your own']
+    const forms = ru['{1} exercises + {0} of your own']
     expect(typeof forms).toBe('object')
     mocks.S.customEx = own(1)
     const one = sub(render())
