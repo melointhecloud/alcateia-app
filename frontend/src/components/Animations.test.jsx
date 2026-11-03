@@ -5,11 +5,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 
-/* Settings → Workout → Animation quality in the store apps, and what it puts on screen: the
-   chosen pack's file, the next one down when it will not load, the built-in one, then the still.
-   The profile (S) is never written. The native plugin is a stand-in. */
-// The store apps' built-in animations are animated WebP (VITE_CLIP_EXT=webp), shown as images.
-vi.hoisted(() => { vi.stubEnv('VITE_CLIP_EXT', 'webp') })
+/* Settings → Workout → Animation quality in the store apps. The profile (S) is never written. The
+   native plugin is a stand-in. In this fork a catalogue exercise shows no animation at all. */
 const mocks = vi.hoisted(() => ({
   MOBILE: true, available: true, ready: new Set(), downloads: [], sheets: [], writes: 0,
   S: { gifSize: 'full', exFigure: 'female', workouts: [{ id: 'w1', entries: [{ id: '0001' }] }] },
@@ -52,8 +49,6 @@ const settle = () => act(() => new Promise(r => setTimeout(r, 0)))
 async function mount(el) { await act(async () => { root.render(el) }); await settle() }
 const rowTitles = () => [...host.querySelectorAll('.lrow-t')].map(e => e.textContent)
 const rowByTitle = title => [...host.querySelectorAll('.lrow')].find(r => r.querySelector('.lrow-t')?.textContent === title)
-const img = () => host.querySelector('.exmedia img')
-const fire = (el, type) => act(() => { el.dispatchEvent(new Event(type)) })
 
 beforeEach(async () => {
   localStorage.clear()
@@ -110,35 +105,19 @@ describe('the setting', () => {
   })
 })
 
+// Sem mídia nativa neste fork: o Media de um exercício do catálogo não mostra animação, figura nem
+// arquivo embutido, seja qual for a qualidade escolhida ou o pack instalado. Nada é requisitado.
 describe('what the animation shows', () => {
-  const ex = EXIDX['0001']   // drawn on both figures: the female drawing is 2476
-  it('the chosen pack first; one that will not load hands over to the next, then the built-in file, then the still', async () => {
+  const ex = EXIDX['0001']
+  it('nothing for a catalogue exercise, at any quality, installed pack or not', async () => {
     mocks.ready.add('anim-720-female'); mocks.ready.add('anim-360-female')
-    packs.writePrefs({ choice: 720 })
-    await packs.refresh()
-    await mount(<Media ex={ex} />)
-    expect(img().getAttribute('src')).toBe('app://files/packs/anim-720-female/2476.webp')
-    fire(img(), 'error')
-    expect(img().getAttribute('src')).toBe('app://files/packs/anim-360-female/2476.webp')
-    fire(img(), 'error')
-    expect(img().getAttribute('src')).toBe('exercise-media/clip/2476.webp')
-    fire(img(), 'error')
-    expect(img().getAttribute('src')).toBe('exercise-media/still/2476.webp')
-  })
-  it('still only shows the still, and a tap does not start anything', async () => {
-    packs.writePrefs({ choice: 'still' })
-    await packs.refresh()
-    await mount(<Media ex={ex} />)
-    expect(img().getAttribute('src')).toMatch(/exercise-media\/still\/2476\.webp$/)
-    expect(host.querySelector('.gifhint')).toBeNull()
-    act(() => { host.querySelector('.exmedia').click() })
-    expect(img().getAttribute('src')).toMatch(/still\/2476\.webp$/)
-  })
-  it('a pack not downloaded yet: the built-in file meanwhile, never a blank', async () => {
-    packs.writePrefs({ choice: 1080 })
-    await packs.refresh()
-    await mount(<Media ex={ex} />)
-    expect(img().getAttribute('src')).toBe('exercise-media/clip/2476.webp')
+    for (const choice of [720, 1080, 'auto', 'still', 'builtin']) {
+      packs.writePrefs({ choice })
+      await packs.refresh()
+      await mount(<Media ex={ex} />)
+      expect(host.querySelector('.exmedia'), String(choice)).toBeNull()
+      expect(host.querySelector('img, video, source'), String(choice)).toBeNull()
+    }
   })
 })
 

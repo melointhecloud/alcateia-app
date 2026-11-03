@@ -217,15 +217,9 @@ describe('heart rate from the watch', () => {
 })
 
 describe('the workout\'s animations for the watch', () => {
-  it('are what the phone shows: the built-in clip of each exercise in the app package', async () => {
+  it('are none without a pack: this fork has no built-in clips to send', async () => {
     const { clipsFor } = await import('./watch-sync.js')
-    const { EXIDX } = await import('./exercises.js')
-    const clips = clipsFor(state(), {})
-    expect(clips.map(c => c.exId)).toEqual(['0025', '0001'].filter(id => EXIDX[id]?.gif))
-    for (const c of clips) {
-      expect(c.path).toMatch(/^exercise-media\/clip\/[^/]+\.(mp4|webp)$/)
-      expect(c.packId).toBeUndefined()
-    }
+    expect(clipsFor(state(), {})).toEqual([])
     expect(clipsFor({ active: null }, {})).toEqual([])
   })
 
@@ -239,9 +233,9 @@ describe('the workout\'s animations for the watch', () => {
       expect(c.drawing).toMatch(/^[A-Za-z0-9_-]+$/)
       expect(c.path).toBeUndefined()
     }
-    // a pack that is not ready, or of the other figure, is not used
-    expect(clipsFor(state(), { 'anim-240-female': { state: 'ready' } })[0].path).toBeDefined()
-    expect(clipsFor(state(), { 'anim-240-male': { state: 'downloading' } })[0].path).toBeDefined()
+    // a pack that is not ready, or of the other figure, is not used, and there is no path to fall back on
+    expect(clipsFor(state(), { 'anim-240-female': { state: 'ready' } })).toEqual([])
+    expect(clipsFor(state(), { 'anim-240-male': { state: 'downloading' } })).toEqual([])
   })
 })
 

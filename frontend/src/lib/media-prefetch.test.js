@@ -5,10 +5,9 @@
  * only what the worker's cache is missing. */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { planMediaUrls, prefetchAllowed, prefetchMedia, startMediaPrefetch, installedApp, MEDIA_CACHE, PREFETCH_DELAY_MS } from './media-prefetch.js'
-import { EXIDX, imgSrc, gifSrc } from './exercises.js'
+import { EXIDX } from './exercises.js'
 
 const BASE = 'https://gym.test/app/'
-const abs = src => new URL(src, BASE).href
 const bench = EXIDX['0025'] || Object.values(EXIDX).find(e => e.gif)
 const other = Object.values(EXIDX).find(e => e.gif && e.id !== bench.id)
 
@@ -17,14 +16,15 @@ const cacheWith = urls => ({ match: async u => (urls.includes(u) ? {} : undefine
 
 afterEach(() => { vi.useRealTimers() })
 
+// Sem mídia nativa neste fork (docs/FORK-NOTAS.md): um exercício do catálogo não tem arquivo
+// para guardar offline, então o plano nunca pede nada ao worker.
 describe('planMediaUrls', () => {
-  it('names the still and the animation of every exercise in the plan and the session in progress, once each', () => {
+  it('names nothing for the catalogue exercises of the plan and the session in progress', () => {
     const S = {
       routines: [{ ex: [{ id: bench.id }, { id: bench.id }] }, { ex: [{ id: 'custom-1' }, {}] }, null],
       active: { entries: [{ id: other.id }, { id: bench.id }] },
     }
-    const urls = planMediaUrls(S, BASE, { ...EXIDX, 'custom-1': { id: 'custom-1', n: 'Mine' } })
-    expect(urls.sort()).toEqual([abs(gifSrc(bench)), abs(imgSrc(bench)), abs(gifSrc(other)), abs(imgSrc(other))].sort())
+    expect(planMediaUrls(S, BASE, { ...EXIDX, 'custom-1': { id: 'custom-1', n: 'Mine' } })).toEqual([])
   })
 
   it('an empty or missing plan needs nothing', () => {
@@ -33,15 +33,9 @@ describe('planMediaUrls', () => {
     expect(planMediaUrls({ routines: [{ ex: [{ id: bench.id }] }] }, undefined)).toEqual([])
   })
 
-  it('leaves out media a build points at another origin, which never passes through the worker', async () => {
-    // The demo build's media comes from a CDN (VITE_IMG_BASE/VITE_GIF_BASE, read at load).
-    vi.resetModules()
-    vi.stubEnv('VITE_IMG_BASE', 'https://cdn.test/images/')
-    vi.stubEnv('VITE_GIF_BASE', 'https://cdn.test/videos/')
-    try {
-      const fresh = await import('./media-prefetch.js')
-      expect(fresh.planMediaUrls({ routines: [{ ex: [{ id: bench.id }] }] }, BASE)).toEqual([])
-    } finally { vi.unstubAllEnvs(); vi.resetModules() }
+  it('no URL it could name points at exercise-media/', () => {
+    const urls = planMediaUrls({ routines: [{ ex: Object.keys(EXIDX).slice(0, 200).map(id => ({ id })) }] }, BASE)
+    expect(urls.filter(u => u.includes('exercise-media'))).toEqual([])
   })
 })
 
@@ -137,27 +131,17 @@ describe('startMediaPrefetch', () => {
   afterEach(() => { vi.unstubAllGlobals() })
   const flush = async () => { for (let i = 0; i < 10; i++) await Promise.resolve() }
 
-  it('waits for the app to settle, fetches the plan\'s media through the worker, then only what a plan change adds', async () => {
+  it('asks the worker for nothing, whatever the plan holds or changes to: no catalogue media', async () => {
     vi.useFakeTimers()
     const { store, cachesApi, nav, fetchImpl, win } = setup()
     const stop = startMediaPrefetch(store, { win, nav, cachesApi })
-    expect(fetchImpl).not.toHaveBeenCalled()
     await vi.advanceTimersByTimeAsync(PREFETCH_DELAY_MS)
     await flush()
-    expect(cachesApi.open).toHaveBeenCalledWith(MEDIA_CACHE)
-    expect(fetchImpl.mock.calls.map(c => c[0]).sort()).toEqual([abs(gifSrc(bench)), abs(imgSrc(bench))].sort())
-
-    // Something unrelated changes: nothing new to fetch.
-    store.set({ ...store.state.S, unit: 'lb' })
-    await vi.advanceTimersByTimeAsync(PREFETCH_DELAY_MS)
-    await flush()
-    expect(fetchImpl).toHaveBeenCalledTimes(2)
-
-    // A routine gains an exercise: its two files, and only those.
     store.set({ routines: [{ ex: [{ id: bench.id }, { id: other.id }] }] })
     await vi.advanceTimersByTimeAsync(PREFETCH_DELAY_MS)
     await flush()
-    expect(fetchImpl.mock.calls.slice(2).map(c => c[0]).sort()).toEqual([abs(gifSrc(other)), abs(imgSrc(other))].sort())
+    expect(fetchImpl).not.toHaveBeenCalled()
+    expect(cachesApi.open).not.toHaveBeenCalled()
     stop()
   })
 
@@ -208,38 +192,22 @@ describe('startMediaPrefetch', () => {
     stop()
   })
 
-  it('the installed app on iOS fetches ahead, and so does a tab once it is moved into the app window', async () => {
+  it('the installed app, on iOS or moved in from a tab, fetches nothing either: there is nothing to fetch', async () => {
     vi.useFakeTimers()
     const ios = setup({ win: fakeWindow({ iosStandalone: true }) })
     const stopIos = startMediaPrefetch(ios.store, { win: ios.win, nav: ios.nav, cachesApi: ios.cachesApi })
     await vi.advanceTimersByTimeAsync(PREFETCH_DELAY_MS)
     await flush()
-    expect(ios.fetchImpl).toHaveBeenCalledTimes(2)
+    expect(ios.fetchImpl).not.toHaveBeenCalled()
     stopIos()
 
     const tab = setup({ win: fakeWindow() })
     const stop = startMediaPrefetch(tab.store, { win: tab.win, nav: tab.nav, cachesApi: tab.cachesApi })
-    await vi.advanceTimersByTimeAsync(PREFETCH_DELAY_MS)
-    await flush()
-    expect(tab.fetchImpl).not.toHaveBeenCalled()
     tab.win.become(true)
     await vi.advanceTimersByTimeAsync(PREFETCH_DELAY_MS)
     await flush()
-    expect(tab.fetchImpl.mock.calls.map(c => c[0]).sort()).toEqual([abs(gifSrc(bench)), abs(imgSrc(bench))].sort())
+    expect(tab.fetchImpl).not.toHaveBeenCalled()
     stop()
     expect(tab.win.listeners.size).toBe(0)
-  })
-
-  it('stops between files when the page stops being the installed app', async () => {
-    vi.useFakeTimers()
-    const { store, cachesApi, nav, win } = setup({ S: { routines: [{ ex: [{ id: bench.id }, { id: other.id }] }] } })
-    const fetchImpl = vi.fn(async () => { win.become(false); return answer() })
-    vi.stubGlobal('fetch', fetchImpl)
-    const stop = startMediaPrefetch(store, { win, nav, cachesApi })
-    await vi.advanceTimersByTimeAsync(PREFETCH_DELAY_MS)
-    await flush()
-    // Two lanes had each started one before the first answer came back; none after it.
-    expect(fetchImpl.mock.calls.length).toBeLessThanOrEqual(2)
-    stop()
   })
 })

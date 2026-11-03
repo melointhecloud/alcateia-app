@@ -80,16 +80,65 @@ Alterados (a parte de comportamento fica; só saíram as checagens contra códig
 - `api/test/openapi-routes.test.js`: o teste de tags continua, sem a parte do gerador de docs;
   saiu o teste do `?v=` do site
 
+## App sem mídia nativa (Task A3)
+
+Nenhum caminho `exercise-media/` é requisitado pelo app: nem `<img>`, `<video>`, `<source>`, nem
+`fetch` de clipe ou pack. Um exercício do catálogo não mostra animação nem figura; as listas
+mostram o bloco neutro com o halter. A mídia de exercício personalizado (foto, vídeo, link do
+próprio usuário) não mudou.
+
+Removido ou alterado no código:
+
+| O que | Por quê |
+|---|---|
+| `lib/exercises.js`: `imgSrc` e `gifSrc` agora devolvem `null` (sem `IMG_BASE`, `GIF_BASE`, `CLIP_EXT`, `VITE_IMG_BASE`, `VITE_GIF_BASE`, `VITE_CLIP_EXT`) | Era aqui que a URL `exercise-media/...` era montada. As funções continuam exportadas: quem as usa decide se há o que mostrar |
+| `components/Media.jsx`: `BuiltinMedia` devolve `null`; `Thumb` de catálogo é só o bloco neutro `thumb thumb-x` com ícone (o ramo `CustomThumb` fica) | Plano da Task A3 |
+| `components/Media.jsx`: saíram `useClipInMemory`, `autoplayClip`, `autoplayMuted` e o botão minimizar/expandir | Só serviam ao clipe embutido (o `useClipInMemory` fazia `fetch` do clipe). A mídia personalizada tem os seus próprios hooks em `CustomMedia.jsx`. Voltam do histórico do git se a Fase 2 precisar |
+| `lib/print-pictures.js`: exercício do catálogo não tem figura (a `printPictureSource` devolve `null`) | O plano impresso sai só com texto para eles; fotos de exercícios personalizados continuam |
+| `lib/watch-sync.js`: `clipsFor` ignora exercício sem caminho de clipe | `gifSrc` é `null` |
+| `public/sw.js`: `isMediaPath` não inclui mais `/exercise-media/` (ficam `/img/` e `/gif/` herdados) | O service worker não guarda mídia nativa |
+| `frontend/vite.config.js`: saíram o plugin de dev `catalogueMedia` (servia `/exercise-media/` a partir de `catalogue/media`) e o proxy `MEDIA_TARGET` | Não há o que servir |
+
+`lib/media-prefetch.js` (cache offline da mídia do plano) continua no código mas nunca tem URL para
+buscar; `lib/anim-packs.js`, `lib/anim-quality.js` e a tela de qualidade de animação (só
+aparecem no app nativo, que o fork não tem) ficam como estão até alguém limpar o código nativo.
+
+Guarda de regressão: `frontend/src/lib/no-exercise-media.test.js` varre o código-fonte (sem os
+testes, sem comentários), `public/`, `index.html` e `vite.config.js` e falha se alguma coisa citar
+`exercise-media`.
+
+Testes novos:
+
+- `frontend/src/components/Media.nomedia.test.jsx` (do plano, com mais um caso)
+- `frontend/src/lib/no-exercise-media.test.js`
+
+Testes apagados (só testavam o caminho removido):
+
+- `frontend/src/components/Media.autoplay.test.jsx` e `Media.clip-memory.test.jsx` (helpers de
+  clipe que saíram do `Media.jsx`)
+- `frontend/src/lib/exercises.clip-ext.test.js` (nome dos arquivos de clipe e `VITE_CLIP_EXT`)
+
+Testes reescritos para o novo comportamento:
+
+- `Media.test.jsx` (bloco `gifSize`: agora exige que nada seja renderizado), `Media.thumb.test.jsx`
+  (catálogo sempre bloco neutro, sem `<img>`), `Animations.test.jsx` (bloco "what the animation
+  shows": nada para exercício do catálogo, com qualquer pack)
+- `exercise-figure.test.js` (sem figura para trocar), `anim-quality.test.js` (saiu a comparação
+  com `gifSrc`), `anim-data-safety.test.js` (catálogo: sem figura, só packs instalados)
+- `print-pictures.test.js`, `media-prefetch.test.js`, `watch-sync.test.js` (nada a buscar/enviar
+  para o catálogo), `sw-media.test.js` (os testes de Range passam a usar `/gif/`)
+
 ## Sobras conhecidas (ficam para as próximas tasks)
 
-- `frontend/vite.config.js` ainda tem o plugin de dev que serve `/exercise-media/` a partir de
-  `catalogue/media` (devolve 404 sem a pasta), e o código do app ainda pede mídia: é a Task A3.
 - `frontend/package.json` ainda lista dependências Capacitor; `frontend/capacitor.config.json` e
   `check-mobile-bundle.mjs` (com o teste) seguem no repositório. Nada novo foi instalado.
 - `package.json` da raiz ainda tem `js-yaml`, que só o gerador de docs usava.
 - `scripts/ci/release-check.mjs` e `.github/workflows/release-check.yml` ainda leem versões de
   Android/iOS/Garmin; lidam com arquivo ausente (mostram "-"), então não quebram.
 - `scripts/ci/fork-mr-pipelines.py` (espelho GitLab do upstream) não é usado aqui.
+- `web/nginx.conf.template` ainda tem o bloco `location ^~ .../exercise-media/` (com cabeçalhos da
+  licença) e `api-base.test.js` o confere. Não serve nada sem a pasta e o app não o usa; sai quando
+  mexermos no nginx.
 - `.gitignore` mantém `catalogue/media/` de propósito.
 
 ## Estado de verificação (fim da Task A2)

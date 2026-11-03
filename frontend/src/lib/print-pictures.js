@@ -66,8 +66,10 @@ export function printPictureSource(S, id, index = EXIDX) {
     return m.kind === 'image' && m.size <= CUSTOM_MAX_BYTES ? { kind: 'custom', file: m } : null
   }
   if (!ex.img && !ex.fv && !ex.mv) return null
-  // The still, never gifSrc or an animation pack: see the licence note at the top.
-  return { kind: 'catalogue', url: imgSrc(ex, figureOf(S)) }
+  // The still, never gifSrc or an animation pack: see the licence note at the top. This fork has
+  // no catalogue stills (imgSrc is null), so the exercise prints as text.
+  const url = imgSrc(ex, figureOf(S))
+  return url ? { kind: 'catalogue', url } : null
 }
 
 // A file as a data: URL, in plain JS (no FileReader, so it runs the same in every WebView and in

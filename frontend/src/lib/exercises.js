@@ -182,20 +182,6 @@ export function searchScore(exercise, query) {
   return total
 }
 
-// Media normally sits next to the app (img/ and gif/, mounted into the web container).
-// A build can point them somewhere else — the demo build pulls them off a CDN instead of
-// shipping ~140 MB of images into the deployment. `import.meta.env` is undefined in plain
-// Node; the guard keeps this module loadable without Vite.
-const ENV = import.meta.env || {}
-// Under their own folder since v1.4.0: a docker-compose.yml from before then still mounts the old
-// dataset's media over img/ and gif/, and would hide the catalogue's files if they lived there.
-const IMG_BASE = ENV.VITE_IMG_BASE || 'exercise-media/still/'
-const GIF_BASE = ENV.VITE_GIF_BASE || 'exercise-media/clip/'
-// The animations are MP4 loops, except in the Android release: there they are animated WebP
-// (VITE_CLIP_EXT=webp, staged from APP_MEDIA_DIR), shown as a plain image. The WebView's video
-// player stalled at every loop of these 3-second clips on real phones; an image decodes like the
-// GIFs the app had before and loops by itself.
-const CLIP_EXT = ENV.VITE_CLIP_EXT === 'webp' ? '.webp' : '.mp4'
 // About 940 exercises are drawn twice, on a male and on a female figure: `fv` names the female
 // drawing of a male exercise, `mv` the male drawing of a female one. Which figure shows is a
 // setting (figureOf); the exercise, its id and everything logged against it stay the same either
@@ -204,10 +190,12 @@ const CLIP_EXT = ENV.VITE_CLIP_EXT === 'webp' ? '.webp' : '.mp4'
 export const figureOf = S => (S?.exFigure === 'female' || S?.exFigure === 'male')
   ? S.exFigure
   : (S?.body === 'female' ? 'female' : 'male')
-const drawing = (ex, figure) => (figure === 'female' ? ex.fv : figure === 'male' ? ex.mv : null) || null
-export const imgSrc = (ex, figure) => IMG_BASE + (drawing(ex, figure) ? drawing(ex, figure) + '.webp' : ex.img)
-const clipFile = f => (CLIP_EXT !== '.mp4' && f.endsWith('.mp4') ? f.slice(0, -4) + CLIP_EXT : f)
-export const gifSrc = (ex, figure) => GIF_BASE + clipFile(drawing(ex, figure) ? drawing(ex, figure) + '.mp4' : ex.gif)
+// Sem mídia nativa neste fork (docs/FORK-NOTAS.md): a licença da Gym visual não cobre uso
+// comercial, então nenhum exercício do catálogo tem arquivo local e nada pede `exercise-media/`.
+// imgSrc/gifSrc continuam exportadas para quem decide se há o que mostrar, e devolvem null. O
+// vídeo curado da Fase 2 entra por outro módulo.
+export const imgSrc = () => null
+export const gifSrc = () => null
 // The catalogue's animations are short MP4 loops; a fork's or an older build's may still be GIFs.
 export const isVideoSrc = src => /\.(mp4|webm)(\?|$)/i.test(src || '')
 

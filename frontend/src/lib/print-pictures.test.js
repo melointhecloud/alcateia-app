@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { EXIDX } from './exercises.js'
 import {
   printPictureSource, loadPrintPictures, printedExerciseIds, isPrintPicture, PLACEHOLDER_PICTURE,
-  PRINT_PICTURE_MAX_PX, readPrintPictures, writePrintPictures, PRINT_PICTURES_KEY,
+  readPrintPictures, writePrintPictures, PRINT_PICTURES_KEY,
 } from './print-pictures.js'
 
 const S = {
@@ -24,29 +24,10 @@ const custom = (media) => ({ id: 'c_mine', n: 'my move', custom: true, bp: 'ches
 afterEach(() => { vi.useRealTimers(); vi.unstubAllEnvs(); vi.resetModules(); vi.doUnmock('./mobile.js') })
 
 describe('printPictureSource', () => {
-  it('is the catalogue still, never an animation', () => {
-    const src = printPictureSource(S, '0025')
-    expect(src.kind).toBe('catalogue')
-    expect(src.url).toMatch(/^exercise-media\/still\/[^/]+\.webp$/)
-    expect(src.url).not.toMatch(/clip|anim-|\.mp4|\.gif/)
-  })
-
-  it('takes the drawing of the figure the profile shows', () => {
+  it('a catalogue exercise has no picture in this fork: it prints as text', () => {
+    expect(printPictureSource(S, '0025')).toBeNull()
     const id = Object.keys(EXIDX).find(k => EXIDX[k].fv)
-    expect(printPictureSource({ ...S, exFigure: 'female' }, id).url).toBe(`exercise-media/still/${EXIDX[id].fv}.webp`)
-  })
-
-  it('in the phone app with larger built-in animations, still picks the 180 px still', async () => {
-    vi.resetModules()
-    vi.stubEnv('VITE_BUILTIN_CLIP_PX', '1080')
-    vi.stubEnv('VITE_CLIP_EXT', 'webp')
-    vi.doMock('./mobile.js', async orig => ({ ...await orig(), MOBILE: true }))
-    const pics = await import('./print-pictures.js')
-    const { gifSrc, EXIDX: idx } = await import('./exercises.js')
-    const src = pics.printPictureSource(S, '0025', idx)
-    expect(src.url).toMatch(/^exercise-media\/still\//)
-    expect(gifSrc(idx['0025'])).toMatch(/clip\/.*\.webp$/)   // the animation path the app shows is another file
-    expect(src.url).not.toBe(gifSrc(idx['0025']))
+    expect(printPictureSource({ ...S, exFigure: 'female' }, id)).toBeNull()
   })
 
   it('a custom exercise prints its poster, a small photo itself, a link or nothing not at all', () => {
@@ -63,43 +44,27 @@ describe('printPictureSource', () => {
 })
 
 describe('loadPrintPictures', () => {
-  it('loads each printed exercise once, as a data URL', async () => {
+  it('catalogue exercises load nothing: no request, no picture', async () => {
     const fetchImpl = okFetch()
     const out = await loadPrintPictures(S, { fetchImpl, decode: size(180, 180) })
-    expect(Object.keys(out).sort()).toEqual(['0025', '0027', '0289'])
-    expect(fetchImpl).toHaveBeenCalledTimes(3)
-    for (const v of Object.values(out)) expect(isPrintPicture(v)).toBe(true)
-    expect(fetchImpl.mock.calls.every(([u]) => u.startsWith('exercise-media/still/'))).toBe(true)
-  })
-
-  it('only one routine\'s exercises for a routine printout', async () => {
-    expect(printedExerciseIds(S, 'a')).toEqual(['0025', '0027'])
-    const out = await loadPrintPictures(S, { routineId: 'a', fetchImpl: okFetch(), decode: size(180, 180) })
-    expect(Object.keys(out).sort()).toEqual(['0025', '0027'])
-  })
-
-  it(`refuses a catalogue file larger than ${PRINT_PICTURE_MAX_PX} px`, async () => {
-    expect(await loadPrintPictures(S, { fetchImpl: okFetch(), decode: size(360, 360) })).toEqual({})
-    expect(await loadPrintPictures(S, { fetchImpl: okFetch(), decode: size(180, 181) })).toEqual({})
-  })
-
-  it('leaves out what fails, does not decode or is not there', async () => {
-    let n = 0
-    const fetchImpl = vi.fn(async url => {
-      n++
-      if (url.includes(EXIDX['0025'].img.replace(/\..*$/, ''))) throw new Error('offline')
-      return n % 2 ? { ok: false } : { ok: true, blob: async () => new Blob([new Uint8Array([1])]) }
-    })
-    const out = await loadPrintPictures(S, { fetchImpl, decode: async () => null })
     expect(out).toEqual({})
+    expect(fetchImpl).not.toHaveBeenCalled()
+  })
+
+  it('lists only one routine\'s exercises for a routine printout', () => {
+    expect(printedExerciseIds(S, 'a')).toEqual(['0025', '0027'])
+    expect(printedExerciseIds(S).sort()).toEqual(['0025', '0027', '0289'])
   })
 
   it('stops waiting at the deadline and keeps what came in', async () => {
-    const fetchImpl = vi.fn(url => url.includes(EXIDX['0025'].img.replace(/\..*$/, ''))
-      ? Promise.resolve({ ok: true, blob: async () => new Blob([new Uint8Array([1])]) })
-      : new Promise(() => {}))
-    const out = await loadPrintPictures(S, { fetchImpl, decode: size(180, 180), timeoutMs: 50 })
-    expect(Object.keys(out)).toEqual(['0025'])
+    const photo = { kind: 'image', hash: HASH, mime: 'image/jpeg', size: 3, width: 100, height: 100 }
+    const slow = { kind: 'image', hash: PHASH, mime: 'image/jpeg', size: 3, width: 100, height: 100 }
+    const S2 = { ...S, routines: [{ id: 'c', name: 'C', ex: [{ id: 'x', sets: 3, reps: 8 }, { id: 'y', sets: 3, reps: 8 }] }] }
+    const store = { get: vi.fn(hash => hash === HASH
+      ? Promise.resolve({ blob: new Blob([new Uint8Array([1])], { type: 'image/jpeg' }) })
+      : new Promise(() => {})) }
+    const out = await loadPrintPictures(S2, { store, fetchImpl: vi.fn(), decode: size(100, 100), timeoutMs: 50, index: { x: custom(photo), y: custom(slow) } })
+    expect(Object.keys(out)).toEqual(['x'])
   })
 
   it('reads a custom photo from the local store, whatever its size in px', async () => {
@@ -113,10 +78,13 @@ describe('loadPrintPictures', () => {
     expect(out.x).toMatch(/^data:image\/jpeg;base64,/)
   })
 
-  it('the placeholder fills every picture without loading anything', async () => {
+  it('the placeholder fills every exercise that has a picture without loading anything', async () => {
+    const photo = { kind: 'image', hash: HASH, mime: 'image/jpeg', size: 3, width: 100, height: 100 }
+    const S2 = { ...S, routines: [{ id: 'c', name: 'C', ex: [{ id: 'x', sets: 3, reps: 8 }, { id: '0025', sets: 3, reps: 8 }] }] }
     const fetchImpl = vi.fn()
-    const out = await loadPrintPictures(S, { placeholder: true, fetchImpl })
-    expect(Object.values(out)).toEqual([PLACEHOLDER_PICTURE, PLACEHOLDER_PICTURE, PLACEHOLDER_PICTURE])
+    const out = await loadPrintPictures(S2, { placeholder: true, fetchImpl, index: { x: custom(photo), '0025': EXIDX['0025'] } })
+    // the catalogue exercise has no picture in this fork; the custom one does
+    expect(out).toEqual({ x: PLACEHOLDER_PICTURE })
     expect(fetchImpl).not.toHaveBeenCalled()
     expect(isPrintPicture(PLACEHOLDER_PICTURE)).toBe(true)
   })

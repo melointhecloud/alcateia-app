@@ -61,12 +61,12 @@ export function assertEveryPictureResolves(S) {
       const p = pictureFor(id, { choice, figure, installed: inst(figure) })
       const where = `${id} ${choice} ${figure} ${name}`
       if (p.kind === 'catalogue') {
-        expect(p.stillSrc, where).toMatch(/^exercise-media\/still\/\d{4,5}\.webp$/)
+        // Sem mídia nativa neste fork: nem figura nem arquivo embutido, só packs instalados.
+        expect(p.stillSrc, where).toBeNull()
         if (choice === 'still') { expect(p.sources, where).toEqual([]); continue }
-        expect(p.sources.length, where).toBeGreaterThan(0)
-        expect(p.sources.at(-1), where).toBe(gifSrc(p.ex, figure))
-        // Never another figure's pack, never a drawing the figure does not show.
-        for (const src of p.sources.slice(0, -1)) {
+        // Never another figure's pack, never a drawing the figure does not show, never exercise-media/.
+        for (const src of p.sources) {
+          expect(src, where).not.toContain('exercise-media')
           expect(src, where).toContain(`-${figure}/`)
           expect(src.endsWith('/' + packDrawingId(p.ex, figure) + '.webp'), where).toBe(true)
         }
@@ -84,7 +84,7 @@ export function assertEveryPictureResolves(S) {
 
 beforeEach(() => { localStorage.clear(); packs._resetAnimPacks() })
 
-describe('every exercise the profile refers to has a picture, at every quality and on both figures', () => {
+describe('every exercise the profile refers to resolves without error, at every quality and on both figures', () => {
   it('the synthetic profile: catalogue, v1.3, alias, twins, custom with and without media, deleted, unknown', () => {
     const counts = assertEveryPictureResolves(structuredClone(FIXTURE))
     expect(counts).toEqual({ catalogue: 5, custom: 2, missing: 2 })

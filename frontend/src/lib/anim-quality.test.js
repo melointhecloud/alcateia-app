@@ -55,18 +55,10 @@ describe('packDrawingId', () => {
     expect(packDrawingId(once, 'female')).toBe('5965')
     expect(packDrawingId(once, 'male')).toBe('5965')
   })
-  it('agrees with lib/exercises.js gifSrc for every catalogue exercise', async () => {
-    const { gifSrc } = await import('./exercises.js')
-    for (const ex of EXDB) {
-      for (const fig of ['male', 'female']) {
-        expect(gifSrc(ex, fig).split('/').pop().replace(/\.(mp4|webp)$/, ''), ex.id + ' ' + fig).toBe(packDrawingId(ex, fig))
-      }
-    }
-  })
 })
 
 describe('clipSources', () => {
-  const builtin = 'exercise-media/clip/0001.webp'
+  const builtin = 'builtin/0001.webp'
   it('the chosen pack first, then every smaller one installed, then the built-in file', () => {
     const r = clipSources({ ex: male, figure: 'female', choice: 720, device: phone, installed: all('female'), builtin })
     expect(r.sources).toEqual([

@@ -103,37 +103,21 @@ describe('inline YouTube', () => {
   })
 })
 
-describe('Media gifSize', () => {
-  it('renders the full animation by default and toggles to mini in the workout', () => {
-    mount({ minimizable: true })
-    expect(host.querySelector('.exmedia img')).toBeTruthy()
-    expect(host.querySelector('.exmedia.mini')).toBeFalsy()
-    act(() => { host.querySelector('.giftoggle').click() })
-    expect(mocks.S.gifSize).toBe('mini')
-    mount({ minimizable: true })
-    expect(host.querySelector('.exmedia.mini')).toBeTruthy()
-  })
-
-  it("renders nothing at all in the workout when gifSize is 'off'", () => {
-    mocks.S = { gifSize: 'off' }
-    mount({ minimizable: true })
-    expect(host.querySelector('.exmedia')).toBeFalsy()
-    expect(host.querySelector('img')).toBeFalsy()
-    expect(host.innerHTML).toBe('')
-  })
-
-  it("'off' only applies to the workout — the detail sheet (not minimizable) still shows media", () => {
-    mocks.S = { gifSize: 'off' }
-    mount({})
-    expect(host.querySelector('.exmedia img')).toBeTruthy()
-  })
-
-  it('treats a legacy/unknown value as full', () => {
-    mocks.S = { gifSize: 'huge' }
-    mount({ minimizable: true })
-    expect(host.querySelector('.exmedia img')).toBeTruthy()
-    expect(host.querySelector('.exmedia.mini')).toBeFalsy()
-  })
+// Sem mídia nativa neste fork: um exercício do catálogo não mostra animação nem figura, qualquer
+// que seja o tamanho escolhido (gifSize), e não há controle de minimizar para algo que não existe.
+describe('Media gifSize (sem mídia nativa)', () => {
+  for (const gifSize of ['full', 'mini', 'off', 'huge']) {
+    for (const minimizable of [true, false]) {
+      it(`gifSize '${gifSize}'${minimizable ? ' no treino' : ''}: nada para mostrar`, () => {
+        mocks.S = { gifSize }
+        mount({ minimizable })
+        expect(host.querySelector('.exmedia')).toBeFalsy()
+        expect(host.querySelector('.giftoggle')).toBeFalsy()
+        expect(host.querySelector('img, video')).toBeFalsy()
+        expect(host.innerHTML).toBe('')
+      })
+    }
+  }
 })
 
 /* ---------------------------------------------------------------- custom exercises -------- */

@@ -17,16 +17,11 @@ describe('exercise drawings: male or female', () => {
     expect(figureOf({ exFigure: 'nonsense' })).toBe('male')
   })
 
-  it('swaps only the picture, both ways', () => {
-    expect(gifSrc(twin, 'female')).toContain(twin.fv + '.mp4')
-    expect(imgSrc(twin, 'female')).toContain(twin.fv + '.webp')
-    expect(gifSrc(twin, 'male')).toContain(twin.id + '.mp4')
-    expect(gifSrc(pair, 'male')).toContain(pair.mv + '.mp4')
-    expect(gifSrc(pair, 'female')).toContain(pair.id + '.mp4')
-  })
-
-  it('keeps the one drawing of an exercise drawn once, whatever the setting', () => {
-    expect(gifSrc(single, 'female')).toBe(gifSrc(single, 'male'))
+  it('has no catalogue picture to swap in this fork, on either figure', () => {
+    for (const ex of [twin, pair, single]) for (const fig of ['male', 'female']) {
+      expect(gifSrc(ex, fig)).toBeNull()
+      expect(imgSrc(ex, fig)).toBeNull()
+    }
   })
 
   it('resolves a drawing id to the exercise it draws, never to "Unknown exercise"', () => {

@@ -279,7 +279,7 @@ export function clipsFor (S, packs = animPacks().packs || {}) {
     // a pack's files are read through Background Assets on the phone, never by a path
     if (pack && drawing && /^[A-Za-z0-9_-]+$/.test(drawing)) { out.push({ exId: e.id, packId: pack, drawing }); continue }
     const path = gifSrc(ex, figure)
-    if (!/\.(webp|mp4|gif)$/i.test(path) || /^[a-z]+:|^\//i.test(path) || path.includes('..')) continue
+    if (!path || !/\.(webp|mp4|gif)$/i.test(path) || /^[a-z]+:|^\//i.test(path) || path.includes('..')) continue
     out.push({ exId: e.id, path })
   }
   return out
