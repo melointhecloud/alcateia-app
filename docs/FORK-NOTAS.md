@@ -276,3 +276,27 @@ Idioma: o padrão vem do servidor, `DEFAULT_LANG=pt-BR` (GET /api/config `defaul
   não mexe em `quizDone`), com "Cancelar". Ao concluir, vai para `#/home`. As rotinas antigas continuam; só os dias
   da semana são trocados (regra de `applyAlcateiaPlan`).
 - Cabeçalho da biblioteca: "5632 exercícios" (sem "animações", em todos os idiomas); chaves antigas removidas dos packs.
+
+## C1: mapa de vídeos curados (`frontend/src/lib/exercise-videos.js`)
+
+- **Mapa vazio de propósito.** `EXERCISE_VIDEOS = {}` até a C3 (curadoria aprovada pela dona do produto); nenhum id foi
+  inventado. Enquanto estiver vazio, `BuiltinMedia` continua devolvendo `null` (o botão "Ver como fazer" é a C2).
+- **Nome do helper: `videoFor(ex)`** (o plano dizia `videoIdFor`; a tarefa pediu `videoFor`). Devolve o id ou `null`.
+  Divergências do plano: valida o formato `^[A-Za-z0-9_-]{11}$` (id mal formado no mapa = sem vídeo, nunca um iframe
+  quebrado), ignora propriedades herdadas (`constructor`, `__proto__`) e devolve `null` para exercício próprio
+  (`custom === true`), que tem a mídia dele em `CustomMedia.jsx`. O módulo não importa nada, para o script de
+  verificação poder lê-lo direto no Node. A C3 deve usar `videoFor` ao reaproveitar o teste de cobertura dos pools.
+- **Teste de cobertura total (pools do gerador com vídeo) NÃO foi adicionado na C1.** O plano o adicionava e o deixava
+  vermelho até a C3; aqui a suíte fica verde e o teste entra na C3, quando o mapa for preenchido.
+- **`BuiltinMedia`** renderiza `YouTubeVideo` (cartão; iframe `youtube-nocookie.com` só após o toque) respeitando
+  `gifSize` (`off` esconde, `mini` usa o cartão compacto). CSP já permite só `frame-src https://www.youtube-nocookie.com`
+  (`web/Dockerfile`, `csp.test.js`). Teste em `Media.video.test.jsx` com `vi.mock` do módulo e id de TESTE só ali; o
+  `Media.nomedia.test.jsx` e o `no-exercise-media.test.js` seguem como estavam (nenhum caminho `exercise-media/` volta).
+- **`scripts/videos/verify.mjs`** (Node puro): consulta o oEmbed de cada id do mapa. Saída 0 (tudo certo, ou mapa vazio com
+  "nenhum vídeo curado"), 1 (algum não-200), 2 (sem rede: nenhuma resposta); `--offline-ok` converte o 2 em 0 com aviso.
+  Falha de vídeo vence falta de rede. `verifyAll(ids, fetchImpl)` e `summarize` são exportados; o teste fica em
+  `frontend/scripts/verify-videos.test.mjs` (o vitest já pega `*.test.mjs` ali; o repo não tem convenção de teste na raiz
+  `scripts/`). O script ainda não está ligado a nenhum workflow de CI: decisão para a C3 (rodar com `--offline-ok`).
+- `docs/curadoria-videos.csv` criado só com o cabeçalho `id,nome,busca_sugerida,url_escolhida,status`.
+- Nenhuma string nova em `t()` (o cartão reaproveita "Watch video" e o texto de privacidade já traduzidos); os packs
+  de idioma não mudaram.
