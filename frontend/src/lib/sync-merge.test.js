@@ -984,3 +984,46 @@ describe('body measurements across devices (#82)', () => {
     expect(next.measurements[0].t).toBe(1000)
   })
 })
+
+// Alcateia (docs/FORK-NOTAS.md): `alcateia` = { quizDone, answers, at } is a root key with no merge
+// of its own, so it rides the generic setting stamps (`edited.alcateia`, stampEdits): each device
+// keeps the answer given last, and a copy that never saw the quiz cannot take quizDone away.
+describe('alcateia (mini-quiz) across devices', () => {
+  const quiz = (days, at) => ({ quizDone: true, answers: { goal: 'tone', place: 'home', days, minutes: 30, level: 'beginner' }, at })
+  const seen = () => base({ _ts: 100 })
+  // What the store's update() does: the change is stamped with its own time.
+  const answer = (S, value, now) => {
+    const n = clone(S); n.alcateia = value
+    stampEdits(S, n, now); n._ts = now
+    return n
+  }
+
+  it('the quiz answered last wins, whichever copy is newer as a whole', () => {
+    const phone = answer(seen(), quiz(3, 1000), 1000)
+    const desk = answer(seen(), quiz(2, 2000), 2000)
+    // The phone logged a workout afterwards, so its copy is the newer one; its answer is not.
+    phone.workouts = [workout('w1')]; phone._ts = 3000
+    for (const [a, b] of [[phone, desk], [desk, phone]]) {
+      const out = mergeStates(a, b)
+      expect(out.alcateia.answers.days).toBe(2)
+      expect(out.alcateia.at).toBe(2000)
+      expect(out.edited.alcateia).toBe(2000)
+      expect(ids(out.workouts)).toEqual(['w1'])
+    }
+  })
+  it('quizDone is not lost to a newer copy that never had the field', () => {
+    const phone = answer(seen(), quiz(3, 1000), 1000)
+    const desk = { ...seen(), workouts: [workout('w9')], _ts: 5000 }   // newer as a whole, no alcateia, no stamp
+    for (const [a, b] of [[phone, desk], [desk, phone]]) {
+      const out = mergeStates(a, b)
+      expect(out.alcateia.quizDone).toBe(true)
+      expect(out.alcateia.answers.days).toBe(3)
+      expect(ids(out.workouts)).toEqual(['w9'])
+    }
+  })
+  it('with no stamp on either side, the newer copy\'s answer stays', () => {
+    const a = { ...seen(), _ts: 200, alcateia: quiz(4, 150) }, b = { ...seen(), _ts: 100, alcateia: quiz(2, 90) }
+    expect(mergeStates(a, b).alcateia.answers.days).toBe(4)
+    expect(mergeStates(b, a).alcateia.answers.days).toBe(4)
+  })
+})

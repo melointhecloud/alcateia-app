@@ -238,3 +238,25 @@ Idioma: o padrão vem do servidor, `DEFAULT_LANG=pt-BR` (GET /api/config `defaul
   `schedule [{day,routineId}]` (day 1 = segunda). Ícones `figureStrength` e `legs` existem em `components/Icon.jsx`.
   Rotinas geradas são dados do usuário (nome literal pt-BR, como as rotinas do `starter.js`, que ficam em inglês).
 - `fitRoutines`/`substituteFor` do `starter.js` não são usados: os pools já são curados por local.
+
+## B2: aplicar o plano gerado (`frontend/src/lib/alcateia-plan.js`)
+
+- Implementação e testes do plano aplicados quase literais. Único ajuste no teste: `// @vitest-environment happy-dom`
+  na primeira linha (importar `useStore` precisa de `window`). Formato real de `S.week`: `{ [dia]: [routineId] }`
+  (lista de ids; `DEF.week = {}`), como o teste de `sheets.starter.test.jsx` já assume; o teste e o `beforeEach` do plano
+  já estavam nesse formato.
+- **`alcateia` NÃO foi posto em `DEF`** (o plano listava isso em "Modify"). Não é preciso: o estado é carregado com
+  `Object.assign(clone(DEF), salvo)`, que mantém chaves desconhecidas, e o teste de entrada inválida exige
+  `S().alcateia === undefined`; um `alcateia: null` em `DEF` quebraria isso. Quem lê `S.alcateia` deve tratar ausente.
+- Refazer o quiz mantém as rotinas antigas geradas (decisão do plano). Elas não são marcadas de nenhuma forma (sem campo
+  novo nas rotinas): se a UI quiser distingui-las depois, é decisão a tomar então.
+- **Sync de `alcateia` (nenhuma mudança em `sync-merge.js`/`api/sync-stamps.js`)**: chave nova de nível raiz fora de
+  `OWN_MERGE`/`PER_KEY` é tratada como configuração comum. `update()` → `stampEdits` grava `edited.alcateia` quando o
+  valor muda; no 409 `mergeStates` → `applyEdits` pega o campo da cópia que o mudou por último (pelo carimbo, não pelo
+  `_ts` geral) e, se só um lado tem carimbo, esse lado vence, inclusive contra uma cópia mais nova sem o campo (então
+  `quizDone: true` não se perde). Sem carimbo nos dois lados, vale a cópia de `_ts` maior. O objeto é substituído
+  inteiro (não mescla `answers` campo a campo, o que é desejável: as respostas são um conjunto).
+  Testes: `describe('alcateia (mini-quiz) across devices')` em `sync-merge.test.js`.
+- **API**: `PUT /api/data` não tem allowlist de chaves (só valida `workouts`/`routines` como listas e exige alguma chave
+  além de `_rev`/`_ts`); `stampPut` carimba como configuração e `keepUnknown` devolve a chave a um app antigo que não a
+  conhece. Teste novo: `api/test/alcateia-state.test.js`.
