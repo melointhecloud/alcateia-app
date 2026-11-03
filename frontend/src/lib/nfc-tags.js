@@ -1,24 +1,28 @@
-// NFC stickers (v1.4.4): what an openGym sticker says, and what a tap on one does.
+// NFC stickers (v1.4.4): what an Alcateia sticker says, and what a tap on one does.
 //
 // The app writes plain NDEF URI records itself (lib/nfc.js, NfcTagsPlugin on the phones, Web NFC
-// in Chrome on Android). Two kinds:
+// in Chrome on Android). Two kinds, on the address the app itself is served from (the upstream
+// pointed them at its own website, which this fork does not have and does not use):
 //
-//   https://opengym.ch/nfc?do=start            start today's workout (or open the one running)
-//   https://opengym.ch/nfc?do=checkin&card=ID  show the gym membership code (views/CheckIn.jsx)
-//   https://opengym.ch/nfc?ex=ID               a machine: jump to that exercise in the workout
+//   <this app>/nfc?do=start            start today's workout (or open the one running)
+//   <this app>/nfc?do=checkin&card=ID  show the gym membership code (views/CheckIn.jsx)
+//   <this app>/nfc?ex=ID               a machine: jump to that exercise in the workout
 //
-// An https link and not only our own scheme, because that is what a phone reads with the app
-// closed: Android hands the tag to the app through the NDEF_DISCOVERED filter in the manifest,
-// and iOS background tag reading only routes web links (custom schemes are not supported there);
-// until opengym.ch is an associated domain of the iPhone app, the link opens opengym.ch/nfc in
-// Safari, which hands it on as opengym://nfc?... A phone without openGym lands on that page too.
-// The short opengym:// forms (opengym://checkin, opengym://exercise/ID) are read as well.
+// Only a tag read while the app is open is acted on: a tap with the app closed just opens the
+// address, and nothing there reads the query (docs/FORK-NOTAS.md). The short opengym:// forms
+// (opengym://checkin, opengym://exercise/ID) are read as well.
 //
 // Only our own stickers: nothing here reads, copies or emulates a gym's access card.
 import { effectiveRoutineIds, effectiveRoutines } from './history.js'
 import { canonicalExId } from './exercises.js'
 
-export const TAG_HOST = 'opengym.ch'
+/** The address this app is served from, as { protocol, host }, or null where there is none (tests, a worker). */
+const here = () => {
+  try {
+    const l = globalThis.location
+    return l && l.host && /^https?:$/.test(l.protocol) ? { protocol: l.protocol, host: l.host.toLowerCase() } : null
+  } catch { return null }
+}
 export const TAG_PATH = '/nfc'
 export const SCHEME = 'opengym'
 const ID_RE = /^[A-Za-z0-9_-]{1,64}$/
@@ -38,7 +42,9 @@ export function tagUrl(tag) {
   } else {
     throw new Error('unknown tag')
   }
-  return `https://${TAG_HOST}${TAG_PATH}?${q}`
+  const at = here()
+  if (!at) throw new Error('no address')
+  return `${at.protocol}//${at.host}${TAG_PATH}?${q}`
 }
 
 const fromQuery = q => {
@@ -51,7 +57,7 @@ const fromQuery = q => {
 }
 
 /**
- * What a link read from a sticker (or handed over by opengym.ch/nfc) asks for, or null for
+ * What a link read from a sticker asks for, or null for
  * anything that is not one of ours. Never throws.
  */
 export function parseTagUrl(raw) {
@@ -60,8 +66,8 @@ export function parseTagUrl(raw) {
   try { u = new URL(raw.trim()) } catch { return null }
   const proto = u.protocol.toLowerCase()
   if (proto === 'https:' || proto === 'http:') {
-    const host = u.hostname.toLowerCase().replace(/^www\./, '')
-    if (host !== TAG_HOST) return null
+    const at = here()
+    if (!at || u.host.toLowerCase() !== at.host) return null
     if (u.pathname.replace(/\.html$/, '').replace(/\/+$/, '') !== TAG_PATH) return null
     return fromQuery(u.searchParams)
   }

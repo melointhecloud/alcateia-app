@@ -137,7 +137,7 @@ function mapHeader(header) {
 /** Name of the app a header looks like — shown back to the user so they can sanity-check. */
 export function detectSource(header) {
   const h = header.map(norm)
-  if (h.includes('exercise id') && h.includes('set type')) return 'openGym'
+  if (h.includes('exercise id') && h.includes('set type')) return 'Alcateia'
   if (h.includes('exercise') && h.includes('est 1rm kg')) return 'GymMane'
   if (h.includes('exercise title') && h.includes('set index')) return 'Hevy'
   if (h.includes('exercise name') && h.includes('set order')) return 'Strong'
@@ -629,7 +629,7 @@ export function parseWorkoutRows(rows, map, source, { unit = 'kg', customEx = []
   // Our own export (lib/export-csv.js) says more than the others: the catalogue id, which side of
   // a per-side set a row is, a drop-set's drops as rows of their own. Read that way only when the
   // header says it is ours.
-  const own = source === 'openGym'
+  const own = source === 'Alcateia'
   const dateCol = map.date !== undefined ? 'date' : map.startTime !== undefined ? 'startTime' : null
   if (!dateCol || map.exercise === undefined) return { error: 'unrecognised' }
   // Strong's Duration is how long the whole workout took ("1h 5m", "52m"), written on every

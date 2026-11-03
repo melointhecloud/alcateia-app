@@ -18,12 +18,13 @@
 // the app's own requests only). Dark mode darkens them on the phone (a CSS filter, index.css
 // .gym-map), so no second tile provider and no API key: CARTO's dark basemaps now need a key.
 import { MOBILE } from './mobile.js'
+import { BRAND } from './brand.js'
 import { getLang } from './i18n.js'
 import { nativeFetch } from './capacitor-fetch.js'
 
 export const NOMINATIM = 'https://nominatim.openstreetmap.org/search'
 export const PHOTON = 'https://photon.komoot.io'
-export const USER_AGENT = 'openGym/' + (typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : 'dev') + ' (gym reminder; +https://opengym.ch)'
+export const USER_AGENT = 'Alcateia/' + (typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : 'dev') + ' (gym reminder; ' + BRAND.supportEmail + ')'
 export const TILES = Object.freeze({
   url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
   maxZoom: 19,

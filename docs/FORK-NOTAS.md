@@ -3,7 +3,7 @@
 Este repositório é um fork do openGym (AGPL-3.0-or-later). Este arquivo registra o que foi
 removido do upstream, por quê, e onde nos afastamos do plano. Os documentos herdados do upstream
 (README, CHANGELOG, CONTRIBUTING, CLAUDE.md, a maior parte de `docs/`) ainda falam do openGym;
-o README será reescrito na Task A4 e o resto só muda quando tocarmos no assunto.
+o README foi reescrito na Task A4 e o resto só muda quando tocarmos no assunto.
 
 ## Regra principal: a mídia da Gym visual nunca volta
 
@@ -148,3 +148,54 @@ Testes reescritos para o novo comportamento:
 - `node scripts/catalogue/build.mjs --check`: em dia
 - `cd frontend && npm test`: 644 arquivos, 7761 testes passando
 - `cd api && npm test`: 797 testes passando
+
+## Marca e remoções do upstream (Task A4)
+
+Marca em `frontend/src/lib/brand.js` (`BRAND`): nome "Alcateia", curto "Alcateia App", repositório,
+upstream e e-mail de suporte (o `support_email` do quiz, `suporte@alcateiademonstros.com.br`).
+
+Texto visível: todo "openGym" em `t()`, JSX e nos 19 packs de `locales/` virou "Alcateia" (chave e
+tradução juntas; em pt e pt-BR com o artigo no feminino). Comentários e cabeçalhos de arquivo, `LICENSE`
+e `NOTICE.md` não foram tocados. Chaves técnicas ficam como estão (`gym_state_v1`, cookies, nomes de
+arquivo `opengym-*.json`, o formato `opengym_plan`, o esquema `opengym://`). `RP_NAME` padrão da API é
+`Alcateia`; os títulos de push e algumas mensagens da API também.
+
+Configurações, Sobre e atualizações: nome e versão, "Código-fonte" (`BRAND.repoUrl`), "Baseado no
+openGym" (`BRAND.upstreamUrl`) e o e-mail de suporte. AGPL §13: não retirar. Strings novas: `Based on {0}`
+e `Support` (nos 19 packs).
+
+| Removido ou alterado | Por quê |
+|---|---|
+| Seção "Apoie" (Buy me a coffee, Ko-fi, GitHub Sponsors, avaliar nas lojas) | Doação do upstream |
+| `lib/update.js` e testes; linhas "Verificar atualizações" e "Baixar o app Android (opengym.ch)" | Consultava o GitHub do upstream e instalava o APK dele |
+| Créditos da mídia Gym visual no rodapé do Sobre | Não há mídia (`MEDIA_CREDIT` em `print-pictures.js` ficou só como texto da licença, sem uso) |
+| Link "Sugerir correção deste exercício" (issues do upstream) | Apontava para o GitHub do upstream |
+| Links "Self-host" do demo (Login e Configurações) | Promoção do upstream |
+| Rodapé `opengym.ch` na impressão e no cartão de compartilhar | Sem site; o cartão mostra só a marca |
+| Links de rotina: agora `<este app>/#/r/<payload>` (antes `opengym.ch/r#...`); a leitura do domínio do upstream saiu | O site do upstream não é nosso |
+| Adesivos NFC: o link usa o endereço do próprio app (antes `opengym.ch/nfc`) | Idem. Com o app fechado o toque só abre o endereço (nada lê a query); com o app aberto funciona |
+| Ícones 180/512 gerados do logo do quiz; novo `icon-512-maskable.png` (logo a 70 % sobre fundo preto/laranja); manifest com `lang: pt-BR` e cores `#000000` | Marca |
+| `index.html`: título, descrição, textos de falha de boot; `theme-color` e fundo do boot em `#000`; hash da CSP em `web/Dockerfile` recalculado | Marca (o `csp.test.js` confere) |
+| `api/wrapped-copy.js` regenerado (`node scripts/build-wrapped-copy.mjs`) | Gerado a partir dos textos do frontend |
+| `README.md` reescrito | Sem badges nem imagens do upstream |
+
+Idioma: o padrão vem do servidor, `DEFAULT_LANG=pt-BR` (GET /api/config `default_lang`, lido em
+`lib/default-lang.js`). Não há como definir isso só no frontend. Verificado no navegador com idioma
+`en-US`: a UI abre em português para visitante novo.
+
+### Pendências da A4
+
+- `BRAND.repoUrl` é placeholder (`https://github.com/SEU-USUARIO/alcateia-app`); trocar na Task A6. O
+  `Source code` do Sobre e `INTEGRATIONS_DOCS` dependem dele. Não pode ir a produção com o placeholder (AGPL §13).
+- Paleta: fundo e `theme-color` em preto como o quiz. O acento do app continua o verde padrão (`lime`,
+  `#30d158`). O quiz mistura laranja (`#F88E28` no `quiz.css`, e o logo) e magenta (`#FF0DFF`, o tema da
+  página do quiz). Escolher o acento e então mudar `DEFAULT_ACCENT` (`lib/accent.js`), `accent` em
+  `store/useStore.js` e a cor do boot em `index.html` (e o hash da CSP, se o script mudar), mais os testes de acento.
+- Fonte do quiz (Plus Jakarta Sans) não foi trazida (precisa copiar os woff2).
+- `frontend/public/app-icons/*` (112 px, ícones alternativos do app nativo) seguem os do upstream; só
+  aparecem no app nativo, que o fork não tem.
+- O título da página "About & updates" (Sobre e atualizações) ainda diz "atualizações"; renomear exige
+  mexer em mais strings nos 19 packs.
+- Ainda dizem "app do celular" textos de recursos nativos (parear app móvel, Apple Watch, Health Connect);
+  só aparecem quando há um servidor ou o app nativo, que o fork não tem.
+- Demo (`pages.yml`) e as imagens do `.github` do upstream seguem como vieram.

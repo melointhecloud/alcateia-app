@@ -53,10 +53,10 @@ export default function ZeppSettingsPage ({ api = { relayLinks, relayPairCode, r
   const address = serverAddress()
 
   return <>
-    <Section footer={err || t('Amazfit and other Zepp OS watches talk to openGym through this server. Pair one and your workouts show up on your wrist.')}>
+    <Section footer={err || t('Amazfit and other Zepp OS watches talk to Alcateia through this server. Pair one and your workouts show up on your wrist.')}>
       <Row icon="watch" iconTint="var(--orange)" title={t('Pair a watch')} accessory="chevron" onClick={busy ? undefined : newCode} />
     </Section>
-    {pair && <Section title={t('Pairing code')} footer={t('In the Zepp app, open the openGym watch app’s settings and type in this address and code. The code lasts ten minutes.')}>
+    {pair && <Section title={t('Pairing code')} footer={t('In the Zepp app, open the Alcateia watch app’s settings and type in this address and code. The code lasts ten minutes.')}>
       <Row icon="globe" iconTint="var(--blue)" title={t('Server address')} subtitle={address} />
       <Row icon="key" iconTint="var(--green)" title={t('Pairing code')}>
         <span className="lrow-v" style={{ fontSize: 22, fontWeight: 700, fontVariantNumeric: 'tabular-nums', letterSpacing: '0.04em' }} data-testid="zepp-code">{pair.code}</span>

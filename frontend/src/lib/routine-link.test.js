@@ -1,4 +1,4 @@
-import { describe, it, expect, afterEach } from 'vitest'
+import { describe, it, expect, afterEach, beforeEach } from 'vitest'
 import {
   routineLinkBundle, encodePayload, decodePayload, routineLink, routinePayloadFromUrl, readRoutineBundle,
   importRoutineLink, importedRoutineName, linkFor, toBase64Url, fromBase64Url, cleanFrom, LINK_FMT, MAX_LINK,
@@ -23,7 +23,10 @@ const push = {
   ],
 }
 
-afterEach(() => registerCustom([]))
+// The link is the app's own address plus the hash route: a node test has no window, so give it one.
+const realLocation = globalThis.location
+beforeEach(() => { globalThis.location = new URL('https://alcateia.example/app/?x=1#/plan') })
+afterEach(() => { registerCustom([]); globalThis.location = realLocation })
 
 const roundTrip = async (bundle, opts) => decodePayload(await encodePayload(bundle, opts))
 
@@ -114,7 +117,7 @@ describe('routine links: size fallback', () => {
   it('a normal routine fits in a link', async () => {
     const link = await routineLink(state(), push, { weights: true })
     expect(link.tooLong).toBeUndefined()
-    expect(link.url.startsWith('https://opengym.ch/r#1.')).toBe(true)
+    expect(link.url.startsWith('https://alcateia.example/app/#/r/1.')).toBe(true)
     expect(link.length).toBeLessThanOrEqual(MAX_LINK)
   })
 
@@ -135,19 +138,20 @@ describe('routine links: reading a link', () => {
   const P = '1.d.q1YqzkxRslIqS8wpTVWqBQA'
   it('finds the payload in every form the link travels in', () => {
     for (const url of [
-      'https://opengym.ch/r#' + P, 'https://opengym.ch/r/#' + P, 'https://www.opengym.ch/r#' + P,
-      'https://opengym.ch/r/index.html#' + P, 'opengym://r#' + P, 'opengym://r/#' + P, 'OPENGYM://r#' + P,
-      'https://gym.example.org/#/r/' + P, 'http://192.168.1.10:8080/#/r/' + P, 'https://opengym.ch/demo/#/r/' + P,
+      'opengym://r#' + P, 'opengym://r/#' + P, 'OPENGYM://r#' + P,
+      'https://gym.example.org/#/r/' + P, 'http://192.168.1.10:8080/#/r/' + P, 'https://alcateia.example/demo/#/r/' + P,
       linkFor(P),
     ]) expect(routinePayloadFromUrl(url), url).toBe(P)
   })
 
   it('ignores everything else, without throwing', () => {
     for (const url of [
-      'https://opengym.ch/r', 'https://opengym.ch/r#', 'https://opengym.ch/nfc?do=start', 'https://evil.test/r#' + P,
-      'https://opengym.ch/rest#' + P, 'opengym://nfc?do=start', 'opengym://r/extra#' + P, 'opengym://x#' + P,
-      'https://opengym.ch/r#hello', 'https://opengym.ch/r#1.d.<script>', 'javascript:alert(1)', '', null, 42,
-      'https://opengym.ch/r#1.d.' + 'A'.repeat(17000),
+      'https://alcateia.example/r', 'https://alcateia.example/r#', 'https://alcateia.example/nfc?do=start', 'https://evil.test/r#' + P,
+      // The upstream's website form is no longer ours to read: only the hash route and opengym://.
+      'https://opengym.ch/r#' + P, 'https://alcateia.example/r#' + P,
+      'https://alcateia.example/#/rest/' + P, 'opengym://nfc?do=start', 'opengym://r/extra#' + P, 'opengym://x#' + P,
+      'https://alcateia.example/#/r/hello', 'https://alcateia.example/#/r/1.d.<script>', 'javascript:alert(1)', '', null, 42,
+      'https://alcateia.example/#/r/1.d.' + 'A'.repeat(17000),
     ]) expect(routinePayloadFromUrl(url), String(url).slice(0, 60)).toBeNull()
   })
 })

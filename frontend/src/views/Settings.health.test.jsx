@@ -50,7 +50,6 @@ vi.mock('../lib/mobile.js', () => ({
   isAndroid: () => Promise.resolve(mocks.android),
   shareExport: vi.fn(), syncReminder: vi.fn(),
 }))
-vi.mock('../lib/update.js', () => ({ checkForUpdate: () => Promise.resolve({ hasUpdate: false }), downloadAndInstall: vi.fn() }))
 vi.mock('../lib/health-sync.js', () => ({
   healthStatus: () => Promise.resolve(mocks.status),
   loadHealth: () => Promise.resolve(mocks.health),
@@ -200,7 +199,7 @@ describe('Settings — reading back', () => {
     expect(sw('Weigh-ins from other apps').getAttribute('aria-checked')).toBe('false')
     expect(writeSwitch().getAttribute('aria-checked')).toBe('false')
     expect(mocks.enableHealth).not.toHaveBeenCalled()
-    expect(host.textContent).toContain('openGym reads only while it is open')
+    expect(host.textContent).toContain('Alcateia reads only while it is open')
     expect(row('Open Health Connect')).toBeTruthy()
   })
 

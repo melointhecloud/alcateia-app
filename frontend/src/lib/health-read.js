@@ -104,7 +104,7 @@ export function mergeWeighIns(S, records, { src, seen = {} } = {}) {
     if (seen[rid]) continue
     const d = isoOf(new Date(r.t)), at = timeOf(r.t)
     const day = S.bodyweight.find(b => b && b.d === d)
-    if (!day && Number(deleted[d]) > r.t) continue        // the day was removed in openGym after it was taken
+    if (!day && Number(deleted[d]) > r.t) continue        // the day was removed in Alcateia after it was taken
     if (day) {
       const rs = readingsOf(day)
       const removed = Number(day.gone?.[rid]) > 0

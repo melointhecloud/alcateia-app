@@ -48,10 +48,6 @@ vi.mock('../lib/mobile.js', () => ({
   isAndroid: () => Promise.resolve(mocks.android),
   shareExport: vi.fn(), syncReminder: vi.fn(),
 }))
-vi.mock('../lib/update.js', () => ({
-  checkForUpdate: (...a) => mocks.checkForUpdate(...a),
-  downloadAndInstall: vi.fn(),
-}))
 vi.mock('./MobileOnboarding.jsx', () => ({ ConnectSheet: () => null }))
 vi.mock('../sheets.jsx', () => ({
   starterPlanSheet: vi.fn(), confirmSheet: (...a) => mocks.confirmSheet(...a), importFromApp: vi.fn(),

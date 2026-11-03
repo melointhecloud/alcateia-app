@@ -3,6 +3,7 @@ import React, { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import Settings from './Settings.jsx'
+import { BRAND } from '../lib/brand.js'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 
@@ -153,10 +154,22 @@ describe('Settings — reset everything', () => {
   })
 })
 
-describe('Settings — footer', () => {
-  it('links the source code to its home on GitHub, on About & updates', () => {
+describe('Settings — about', () => {
+  // AGPL §13: the source link must be there, and so must the credit to the upstream.
+  it('links the fork\'s source code and credits openGym, on About & updates', () => {
     act(() => root.render(<Settings page="about" />))
-    const link = [...host.querySelectorAll('a')].find(a => a.textContent === 'Source code')
-    expect(link.getAttribute('href')).toBe('https://github.com/DuarteSantos8/openGym')
+    const links = [...host.querySelectorAll('a')]
+    expect(links.find(a => a.textContent === 'Source code').getAttribute('href')).toBe(BRAND.repoUrl)
+    const upstream = links.find(a => a.textContent === 'openGym')
+    expect(upstream.getAttribute('href')).toBe(BRAND.upstreamUrl)
+    expect(upstream.parentElement.textContent).toContain('Based on openGym')
+    expect(host.textContent).toContain(BRAND.short)
+  })
+
+  it('has no donation, store-rating, update or upstream-website links', () => {
+    act(() => root.render(<Settings page="about" />))
+    const hrefs = [...host.querySelectorAll('a')].map(a => a.getAttribute('href')).join(' ')
+    expect(hrefs).not.toMatch(/ko-fi|buymeacoffee|sponsors|opengym\.ch|discord|play\.google|apps\.apple/i)
+    expect(host.textContent).not.toMatch(/coffee|Ko-fi|Gym visual|Check for updates|Get the Android app/i)
   })
 })

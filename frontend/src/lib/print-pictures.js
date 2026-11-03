@@ -28,8 +28,8 @@ export const PRINT_PICTURES_TIMEOUT_MS = 8000
 const CUSTOM_MAX_BYTES = 1.5 * 1024 * 1024
 const CONCURRENCY = 4
 
-// The attribution the media licence asks for, word for word as Settings shows it (agreement §8c),
-// so it is not translated.
+// The attribution the media licence asks for, word for word (agreement §8c), so it is not translated.
+// Unused here while the fork ships no catalogue pictures (docs/FORK-NOTAS.md); kept as the licence words it is.
 export const MEDIA_CREDIT = 'Exercise media © Aliaksandr Makatserchyk, Gym visual, gymvisual.com. Media licensed for use in openGym only.'
 
 // A grey square: the stand-in the layout check (scripts/pdf/render-samples.mjs) and the tests

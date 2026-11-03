@@ -1,4 +1,4 @@
-// "Share with a friend" (v1.4.4): one routine as a link, https://opengym.ch/r#<payload>.
+// "Share with a friend" (v1.4.4): one routine as a link, <this app>/#/r/<payload>.
 //
 // The payload is a plan file (lib/plan-share.js buildPlanBundle) holding just that routine, so it
 // carries the same `opengym_plan` format version and the receiving app reads it with the same
@@ -8,10 +8,10 @@
 //   <payload> = <link format>.<encoding>.<base64url>      e.g. 1.d.q1YqzkxRslIqS...
 //   encoding  d = deflate-raw (CompressionStream), j = plain JSON (a browser without one)
 //
-// It lives in the URL FRAGMENT: browsers never send that part to a server, so opengym.ch only
-// serves the page (website/r/index.html) and never sees the routine. The same payload opens the
-// app as opengym://r#<payload>, Android's https://opengym.ch/r filter, or a web app at
-// <server>/#/r/<payload>.
+// It lives in the URL FRAGMENT: browsers never send that part to a server, so the server that
+// serves the app never sees the routine. The link is the app's own hash route,
+// <server>/#/r/<payload> (the upstream also had a short page on its website, which this fork does
+// not use); opengym://r#<payload> is still read, for the phone apps.
 //
 // Besides the plan file, the bundle carries two things an older app simply ignores: `from`, the
 // sender's name when they chose to add it, and `names`, the English catalogue names of the
@@ -21,7 +21,6 @@ import { buildPlanBundle, parsePlan, mergePlan } from './plan-share.js'
 import { t } from './i18n-core.js'
 
 export const LINK_FMT = 1
-export const LINK_BASE = 'https://opengym.ch/r'
 // Past this a link starts breaking in chat apps and SMS: the share falls back to a plan file.
 export const MAX_LINK = 2000
 // What a link may hold at all, before and after inflating: far past any real routine.
@@ -155,7 +154,11 @@ export async function decodePayload(payload) {
   return data
 }
 
-export const linkFor = payload => `${LINK_BASE}#${payload}`
+// The address this app is served from, without any query or hash ('' where there is none).
+const appAddress = () => {
+  try { const l = globalThis.location; return l && /^https?:$/.test(l.protocol) ? l.origin + l.pathname : '' } catch { return '' }
+}
+export const linkFor = payload => `${appAddress()}#/r/${payload}`
 
 /**
  * The link for a routine, or `{ tooLong: true }` when it would pass MAX_LINK (the caller shares a
@@ -174,9 +177,8 @@ const PAYLOAD_RE = /^\d{1,4}\.[a-z]\.[A-Za-z0-9_-]+$/
 
 /**
  * The payload of a routine link, or null for anything else. Never throws. Reads
- *   https://opengym.ch/r#P  https://opengym.ch/r/#P  (www. too)
  *   opengym://r#P  opengym://r/#P
- *   any web app's  .../#/r/P  (the hash route the website's "Open in the web app" uses)
+ *   any web app's  .../#/r/P  (the hash route linkFor writes)
  */
 export function routinePayloadFromUrl(raw) {
   if (typeof raw !== 'string' || raw.length > MAX_PAYLOAD + 512) return null
@@ -187,12 +189,7 @@ export function routinePayloadFromUrl(raw) {
   const proto = u.protocol.toLowerCase()
   const route = /^\/r\/([^/?#]+)\/?$/.exec(hash)
   if (route) return ok(route[1])
-  if (proto === 'https:' || proto === 'http:') {
-    const host = u.hostname.toLowerCase().replace(/^www\./, '')
-    if (host !== 'opengym.ch') return null
-    if (u.pathname.replace(/\/index\.html$/, '').replace(/\/+$/, '') !== '/r') return null
-    return ok(hash)
-  }
+  if (proto === 'https:' || proto === 'http:') return null
   if (proto !== 'opengym:') return null
   const host = (u.hostname || '').toLowerCase()
   const rest = u.pathname.replace(/^\/+/, '').replace(/\/+$/, '')

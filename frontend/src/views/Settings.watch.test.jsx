@@ -44,7 +44,6 @@ vi.mock('../lib/mobile.js', () => ({
   isAndroid: () => Promise.resolve(mocks.android),
   shareExport: vi.fn(), syncReminder: vi.fn(),
 }))
-vi.mock('../lib/update.js', () => ({ checkForUpdate: () => Promise.resolve({ hasUpdate: false }), downloadAndInstall: vi.fn() }))
 vi.mock('../lib/health-sync.js', () => ({
   healthStatus: () => Promise.resolve(mocks.status),
   loadHealth: () => Promise.resolve(mocks.health),

@@ -49,7 +49,6 @@ vi.mock('../components/BackupFolderRow.jsx', async () => {
     autoBackupSubtitle: real.autoBackupSubtitle,
   }
 })
-vi.mock('../lib/update.js', () => ({ checkForUpdate: () => new Promise(() => {}), downloadAndInstall: vi.fn() }))
 vi.mock('./MobileOnboarding.jsx', () => ({ ConnectSheet: () => null }))
 vi.mock('../sheets.jsx', () => ({
   loadStarterPlan: vi.fn(), starterPlanSheet: vi.fn(), confirmSheet: vi.fn(), importFromApp: vi.fn(),
@@ -113,11 +112,11 @@ describe('the Auto-backup row', () => {
     mocks.folder = { uri: 'content://tree/Sync', label: 'SyncFolder' }
     await mount()
     expect(subtitle()).toContain('“SyncFolder”')
-    expect(subtitle()).not.toContain('Documents/openGym')
+    expect(subtitle()).not.toContain('Documents/Alcateia')
   })
-  it('names Documents/openGym with no folder chosen', async () => {
+  it('names Documents/Alcateia with no folder chosen', async () => {
     mocks.S.autoBackup = true
     await mount()
-    expect(subtitle()).toContain('Documents/openGym')
+    expect(subtitle()).toContain('Documents/Alcateia')
   })
 })

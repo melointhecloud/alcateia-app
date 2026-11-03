@@ -187,7 +187,7 @@ export function outboundUrlError(raw, { allowLan = false } = {}) {
   if (net.isIP(host) || /^[0-9.]+$/.test(host)) {
     if (!net.isIP(host)) return 'url is not valid';
     if (!outboundAddrOk(host, { allowLan, plain })) {
-      return allowLan ? 'url points at an address openGym never calls' : 'url points at a private address (your admin can allow the home network)';
+      return allowLan ? 'url points at an address Alcateia never calls' : 'url points at a private address (your admin can allow the home network)';
     }
   }
   return null;

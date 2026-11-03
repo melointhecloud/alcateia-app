@@ -4,11 +4,12 @@
 // lib/share-image.js gets the picture out of the app. No exercise picture or clip is ever drawn
 // on a card (the licence keeps those inside the app, NOTICE.md).
 
+import { BRAND } from './brand.js'
+
 // 9:16 for Stories and Reels, 1:1 for a feed or a chat.
 export const FORMATS = { story: { width: 1080, height: 1920 }, square: { width: 1080, height: 1080 } }
 export const FORMAT_IDS = Object.keys(FORMATS)
 export const STYLE_IDS = ['dark', 'light']
-export const SITE = 'opengym.ch'
 
 /**
  * The colours of a card, the app's own (index.css) in a fixed light or dark look, whatever the
@@ -66,27 +67,19 @@ export function drawMark(ctx, x, y, h, color) {
 }
 
 /**
- * The footer every card ends with: the mark, "openGym" with "Gym" in the accent, and the site at
- * the other end. `y` is the text's baseline. Drawn left to right whatever the language: it is a
- * logo, and a logo does not mirror.
+ * The footer every card ends with: the mark and "Alcateia". `y` is the text's baseline. Drawn left
+ * to right whatever the language: it is a logo, and a logo does not mirror. (The upstream's card
+ * also carried its website address at the other end; the fork has none to show.)
  */
-export function drawBrand(ctx, { x, y, width, colors, family, size = 40 }) {
+export function drawBrand(ctx, { x, y, colors, family, size = 40 }) {
   const markH = size * 0.78
   drawMark(ctx, x, y - size * 0.36, markH, colors.acc)
-  let tx = x + markH * MARK_ASPECT + size * 0.4
+  const tx = x + markH * MARK_ASPECT + size * 0.4
   ctx.direction = 'ltr'
   ctx.textAlign = 'left'
   ctx.font = `800 ${size}px ${family}`
   ctx.fillStyle = colors.label
-  ctx.fillText('open', tx, y)
-  tx += ctx.measureText('open').width
-  ctx.fillStyle = colors.accText || colors.acc
-  ctx.fillText('Gym', tx, y)
-  ctx.font = `600 ${Math.round(size * 0.72)}px ${family}`
-  ctx.fillStyle = colors.label2
-  ctx.textAlign = 'right'
-  ctx.fillText(SITE, x + width, y)
-  ctx.textAlign = 'left'
+  ctx.fillText(BRAND.name, tx, y)
 }
 
 export function roundRect(ctx, x, y, w, h, r) {
