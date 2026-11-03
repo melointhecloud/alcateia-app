@@ -1,15 +1,15 @@
-name: opengym
+name: alcateia
 
 services:
   # Passkey auth + per-user data (Node, no framework).
-  # image: prebuilt (docker compose pull). build: from source (docker compose up --build).
+  # Alcateia: always built from source here. The tags below are local-only on purpose: never pull
+  # the upstream images (ghcr.io/duartesantos8/...), they carry licensed exercise media.
   api:
-    image: ghcr.io/duartesantos8/opengym-api:latest
+    image: alcateia-api:local
     # Default target: no AI runtime, no AI dependency — the image every instance has always had.
     # To opt into the AI Coach, build the other target instead:
     #     API_TARGET=coach docker compose up --build api
-    # `--build` matters: with an `image:` also set, compose would otherwise pull the prebuilt
-    # default rather than build the coach one.
+    # `--build` matters: it forces a rebuild of the chosen target.
     build:
       context: ./api
       target: ${API_TARGET:-default}
@@ -33,9 +33,9 @@ services:
       - ./coach-auth:/coach-auth
 
   # Builds the React frontend (multi-stage) and serves it, proxying /api → api
-  # and the exercise animations, which are part of the image. Single origin for passkeys.
+  # Single origin for passkeys. No exercise media ships in this image.
   web:
-    image: ghcr.io/duartesantos8/opengym-web:latest
+    image: alcateia-web:local
     build:
       context: .
       dockerfile: web/Dockerfile

@@ -199,3 +199,22 @@ Idioma: o padrão vem do servidor, `DEFAULT_LANG=pt-BR` (GET /api/config `defaul
 - Ainda dizem "app do celular" textos de recursos nativos (parear app móvel, Apple Watch, Health Connect);
   só aparecem quando há um servidor ou o app nativo, que o fork não tem.
 - Demo (`pages.yml`) e as imagens do `.github` do upstream seguem como vieram.
+
+## A5: padrões de produção e imagens locais
+
+- `.env.example`: valores do produto (`RP_NAME=Alcateia`, `DEFAULT_LANG=pt-BR`, `PASSWORD_LOGIN=1`, `INVITE_ONLY=1`,
+  `ALLOW_GUEST=0`, `FIRST_USER_ADMIN=1`, `COACH_DISABLED=1`, `AUDIT_IP=off`) e comentários do upstream mantidos.
+  Todos os nomes existem em `api/server.js` (`COACH_DISABLED` em `api/coach/config.js`).
+- `docker-compose.yml`: `image: alcateia-api:local` e `alcateia-web:local`, ambos com `build:` (api em `./api`,
+  web na raiz com `web/Dockerfile`). Nunca puxar `ghcr.io/duartesantos8/*` (contém a mídia). `name:` virou `alcateia`
+  (evita colidir com a stack `opengym` de quem tem o upstream rodando).
+- `.gitignore`: `coach-auth/` (volume do compose, credenciais do Codex).
+- **Primeira subida e `INVITE_ONLY=1`**: o primeiro cadastro também exige convite (`/api/register/*` checa o
+  convite antes de `claimFirstAdmin`), e sem admin ninguém gera convite. Fluxo: subir com `INVITE_ONLY=0`, criar o
+  perfil (vira admin/owner), depois ligar `INVITE_ONLY=1` e recriar a api (`docker compose up -d --force-recreate api`).
+  Alternativa: `ADMIN_UIDS`. Isso está documentado no próprio `.env.example`. Verificado: com `INVITE_ONLY=1`,
+  cadastro sem código responde 403 `invite`.
+- Verificado local (build sem mudar Dockerfile): `/api/health` ok, `/exercise-media/...` 404, `SEM_MIDIA` no web,
+  nenhuma requisição `exercise-media` no navegador (biblioteca com 5632 exercícios e treino rodando, miniatura neutra).
+- Observações para depois: o subtítulo da biblioteca ainda diz "5632 exercícios com animações" (string de i18n);
+  a descrição dos exercícios vem em inglês (catálogo).
