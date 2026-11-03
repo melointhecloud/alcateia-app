@@ -6,8 +6,6 @@
 #
 # Pages serves static files only, so this build has no backend — VITE_DEMO=1 makes the app
 # boot straight into guest mode with a seeded example history (see frontend/src/lib/demo.js).
-# The exercise stills and animations (180 px) come from catalogue/media and are staged next to
-# the build by scripts/catalogue/stage-media.mjs, so the demo serves them from its own origin.
 name: Deploy demo to GitHub Pages
 
 on:
@@ -16,7 +14,6 @@ on:
     paths:
       - 'frontend/**'
       - 'catalogue/**'
-      - 'scripts/catalogue/**'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
 
@@ -46,8 +43,6 @@ jobs:
         working-directory: frontend
         env:
           VITE_DEMO: '1'
-      # The 180 px stills and animations from catalogue/media, served next to the demo
-      - run: node scripts/catalogue/stage-media.mjs frontend/dist
       - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:

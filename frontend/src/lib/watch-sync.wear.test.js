@@ -1,17 +1,8 @@
 // @vitest-environment happy-dom
-// The Wear OS watch (android/wear) speaks the Apple Watch's protocol over another wire. The two
-// files below are the contract between this page and its Kotlin code, both read by both sides:
-//   snapshot.json  what the phone sends: built here by buildSnapshot, parsed by the watch's
-//                  CodecTest (Model.kt). Changes on purpose: UPDATE_WEAR_FIXTURES=1 npx vitest run …
-//   events.json    what the watch sends: built by the watch's SessionCore (SessionCoreTest compares),
-//                  applied here through the page's own applyEvents.
-// And Android counts as a phone with a watch link, the iPhone still does, the web does not.
+// The Wear OS watch speaks the Apple Watch's protocol over another wire. (The watch app and its
+// fixture files are not in this fork, so the checks against them are gone.)
+// Android counts as a phone with a watch link, the iPhone still does, the web does not.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { readFileSync, writeFileSync } from 'node:fs'
-import { join, dirname } from 'node:path'
-import { fileURLToPath } from 'node:url'
-
-const fixtures = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'android', 'wear', 'src', 'test', 'resources')
 
 const mobile = vi.hoisted(() => ({ platform: 'android', status: null }))
 vi.mock('@capacitor/core', () => ({ registerPlugin: () => ({ status: (...a) => mobile.status(...a) }) }))
@@ -38,44 +29,10 @@ beforeEach(() => { localStorage.clear(); _resetWatchSync(); mobile.platform = 'a
 afterEach(() => _resetWatchSync())
 
 describe('the snapshot the Wear OS watch parses', () => {
-  it('is the fixture its Kotlin test reads', () => {
-    const snap = buildSnapshot(state(), { timer: { endsAt: 1761743000000 }, activeAt: 1761742950000 })
-    snap.settings = { health: false, restHaptics: true, crown: 'reps', show: { hr: true, last: true, next: true }, lang: 'de', weighIn: false }
-    snap.streak = streakFor(state(), '2026-10-29')
-    const file = join(fixtures, 'snapshot.json')
-    if (process.env.UPDATE_WEAR_FIXTURES) writeFileSync(file, JSON.stringify(snap, null, 2) + '\n')
-    expect(JSON.parse(readFileSync(file, 'utf8'))).toEqual(JSON.parse(JSON.stringify(snap)))
-  })
-
   it('carries the week streak for the Tile', () => {
     expect(streakFor(state(), '2026-10-29')).toEqual({ weeks: 1, thisWeekDone: false })
     expect(streakFor({ workouts: [] })).toEqual({ weeks: 0, thisWeekDone: false })
     expect(streakFor(null)).toEqual({ weeks: 0, thisWeekDone: false })
-  })
-})
-
-describe('the events the Wear OS watch sends', () => {
-  const events = () => JSON.parse(readFileSync(join(fixtures, 'events.json'), 'utf8'))
-
-  it('are applied through the page\'s own actions, like the Apple Watch\'s', () => {
-    const S = state()
-    const setDone = vi.fn(), finish = vi.fn()
-    bindWatchActions({ setDone, finish })
-    const evs = events().filter(e => e.wid === 'w-1')
-    expect(applyEvents(evs, () => ({ S }))).toEqual(evs.map(e => e.id))
-    // the second set of the bench press, with its heart rate
-    expect(setDone).toHaveBeenCalledWith(0, 1, { w: 62.5, r: 7, at: 1761743100000, hr: { avg: 128, max: 141 } })
-    // the second exercise's work set, no heart rate measured
-    expect(setDone).toHaveBeenCalledWith(1, 1, { w: 30, r: 10, at: 1761743200000, hr: null })
-    expect(finish).toHaveBeenCalledTimes(1)
-  })
-
-  it('start a routine on the phone with the watch\'s id', () => {
-    const start = vi.fn()
-    bindWatchAppActions({ start })
-    const ev = events().find(e => e.type === 'start')
-    expect(applyEvents([ev], () => ({ S: { ...state(), active: null } }))).toEqual([ev.id])
-    expect(start).toHaveBeenCalledWith(['r-push'], { id: ev.wid, start: ev.at })
   })
 })
 

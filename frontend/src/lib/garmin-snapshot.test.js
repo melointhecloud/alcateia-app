@@ -1,28 +1,107 @@
-// The Garmin watch's cut-down snapshot (lib/garmin-snapshot.js). The fixture in
-// frontend/garmin/test/snapshot.json is what the watch's Monkey C code is written against
-// (frontend/garmin/source/Core.mc); it is built here from the Wear OS fixture, which the phone
-// builds (watch-sync.wear.test.js). Changes on purpose: UPDATE_GARMIN_FIXTURES=1 npx vitest run …
+// The Garmin watch's cut-down snapshot (lib/garmin-snapshot.js), built here from a Wear OS snapshot.
 import { describe, expect, it } from 'vitest'
-import { readFileSync, writeFileSync } from 'node:fs'
-import { join, dirname } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { garminSnapshot, garminWindow, garminTotals, GARMIN_MAX_BYTES } from './garmin-snapshot.js'
 
-const here = dirname(fileURLToPath(import.meta.url))
-const wearSnap = () => JSON.parse(readFileSync(join(here, '..', '..', 'android', 'wear', 'src', 'test', 'resources', 'snapshot.json'), 'utf8'))
+// The snapshot the phone sends the Wear OS watch (lib/watch-sync.js buildSnapshot), kept here as a
+// fixture: the Garmin copy is cut down from it. (The Wear OS app itself is not in this fork.)
+const WEAR_SNAPSHOT = {
+  "v": 1,
+  "unit": "kg",
+  "restSec": 90,
+  "ready": null,
+  "active": {
+    "id": "w-1",
+    "name": "Push day",
+    "start": 1761742800000,
+    "unit": "kg",
+    "cur": 0,
+    "restSec": 90,
+    "rest": {
+      "endsAt": 1761743000000
+    },
+    "entries": [
+      {
+        "id": "0025",
+        "name": "Barbell Bench Press",
+        "mode": "reps",
+        "restSec": 120,
+        "last": "55×8, 57.5×6",
+        "sets": [
+          {
+            "w": 60,
+            "r": 8,
+            "sec": null,
+            "done": true,
+            "warmup": false,
+            "at": 1761742900000
+          },
+          {
+            "w": 60,
+            "r": 8,
+            "sec": null,
+            "done": false,
+            "warmup": false
+          }
+        ],
+        "best": {
+          "w": 57.5,
+          "r": 6
+        },
+        "step": 2.5
+      },
+      {
+        "id": "0001",
+        "name": "3/4 Sit-Up",
+        "mode": "reps",
+        "restSec": null,
+        "last": null,
+        "sets": [
+          {
+            "w": 20,
+            "r": 10,
+            "sec": null,
+            "done": false,
+            "warmup": true
+          },
+          {
+            "w": 30,
+            "r": 10,
+            "sec": null,
+            "done": false,
+            "warmup": false
+          }
+        ],
+        "bodyweight": true,
+        "step": 2.5
+      }
+    ],
+    "healthType": "strength_training",
+    "activeAt": 1761742950000
+  },
+  "settings": {
+    "health": false,
+    "restHaptics": true,
+    "crown": "reps",
+    "show": {
+      "hr": true,
+      "last": true,
+      "next": true
+    },
+    "lang": "de",
+    "weighIn": false
+  },
+  "streak": {
+    "weeks": 1,
+    "thisWeekDone": false
+  }
+}
+const wearSnap = () => structuredClone(WEAR_SNAPSHOT)
 const bytes = v => new TextEncoder().encode(JSON.stringify(v)).length
 
 const row = (done, extra = {}) => ({ w: 50, r: 8, sec: null, done, warmup: false, ...extra })
 const ex = (id, sets, extra = {}) => ({ id, name: 'Exercise ' + id, mode: 'reps', restSec: null, last: '50×8, 50×8', sets, step: 2.5, ...extra })
 
 describe('the Garmin snapshot', () => {
-  it('is the fixture the watch is written against', () => {
-    const out = garminSnapshot(wearSnap())
-    const file = join(here, '..', '..', 'garmin', 'test', 'snapshot.json')
-    if (process.env.UPDATE_GARMIN_FIXTURES) writeFileSync(file, JSON.stringify(out, null, 2) + '\n')
-    expect(JSON.parse(readFileSync(file, 'utf8'))).toEqual(JSON.parse(JSON.stringify(out)))
-  })
-
   it('keeps the same fields as the other watches, with where each exercise sits', () => {
     const out = garminSnapshot(wearSnap())
     expect(out.active.id).toBe('w-1')

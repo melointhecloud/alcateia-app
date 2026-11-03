@@ -13,20 +13,15 @@ name: Publish Docker images
 on:
   push:
     branches: [main]
-    # A docs, website or workflow-only change ships the same images: 181 edge
+    # A docs or workflow-only change ships the same images: 181 edge
     # builds in three months, many of them for a README line. Anything that ends up in an image
-    # still builds (api/, web/, frontend/, catalogue media through the web build).
+    # still builds (api/, web/, frontend/, catalogue/).
     paths-ignore:
       - '*.md'
       - 'docs/**'
-      - 'website/**'
       # (a change to this workflow alone: run it by hand)
       - '.github/**'
-      - 'helm/**'
-      - 'kubernetes/**'
       - 'contrib/**'
-      - 'frontend/ios/**'
-      - 'frontend/android/**'
   release:
     types: [published]
   workflow_dispatch:
