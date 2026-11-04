@@ -582,3 +582,47 @@ Passos 4 e 6 da A7. Detalhes e valores em `docs/DEPLOY-RAILWAY.md`. Onde nos afa
   livres por endereço; `ACCOUNT_FAILS` dá 5 por conta. O teste manual no doc usa mais de 20 tentativas.
 - **Pegadinha da porta.** O `web` precisa de `PORT=3000` (upstream) e escuta em `NGINX_PORT=8080`; a Railway usa
   `PORT` para rotear o domínio, então a porta de destino do domínio do `web` tem de ser 8080 explicitamente.
+
+## Traduções pt: nomes, descrições e instruções dos exercícios dos planos
+
+- **Onde está.** `catalogue/i18n/pt-BR.json` (fonte), com `name`, `description` e `instructions` por id. Os pacotes
+  `frontend/src/exercise-names/pt-BR.js`, `instr/pt-BR.js` e `exercise-desc/pt-BR.js` são gerados por
+  `node scripts/catalogue/build.mjs` (nunca à mão). O app em pt-BR lê só esse pacote: o de Portugal (`pt.json`) não
+  entra em fallback, e sem texto em pt-BR a descrição e os passos caem para o inglês, que foi o achado do teste E2E.
+- **Cobertura.** 104 exercícios com nome, descrição curta (1 a 2 frases) e 4 a 7 passos escritos para o Brasil: os
+  54 ids de `POOLS` em `plan-generator.js` (os mesmos de `docs/curadoria-videos.csv`) mais 50 dos mais comuns
+  (supinos, remadas, roscas, tríceps, agachamentos, afundos, stiff, prancha, barra fixa, máquinas). Os demais ficam
+  como estavam. Nome em formato de frase, sem sufixo em inglês entre parênteses.
+- **Teste.** `frontend/src/lib/plan-exercises-pt.test.js` cobre os ids de `POOLS` e do CSV e tudo o que tem descrição
+  em pt-BR (inglês residual, caixa, termos de Portugal, tamanho). Em `pt-br-instructions.test.js`, a igualdade de nº de
+  passos com o inglês vale só para a tradução legada; os curados ficam entre 4 e 7.
+- **Conhecidos, fora do escopo.** `10106` (barbell high pull) e `9509` (lever sitting toe raise) ainda herdam nomes
+  legados de outro exercício (remada alta e panturrilha sentado).
+
+## Correções pós-E2E
+
+Achados do teste E2E em produção. Um commit por item.
+
+- **Cadastro no modo assinatura (crítico).** `GET /api/config` devolve `invite_only:true` junto com `access_mode:'subscription'` quando o
+  `INVITE_ONLY` ficou ligado, mas o servidor ignora o convite nesse modo (a compra é a porta). O cliente usava `invite_only` e travava o
+  cadastro por senha em "É necessário um código de convite". Agora, com assinatura, `invite_only` não é portão: o campo vira
+  "Tenho um convite" (recolhido, opcional, enviado se preenchido) e o texto "só para convidados" some (`Login.jsx`, `PasswordAuth.jsx`).
+  O cadastro por passkey continua pedindo o código, porque o servidor exige (a tela do modo assinatura só oferece a senha, a menos que o
+  servidor não tenha `PASSWORD_LOGIN`). O painel admin diz "Sign-up is by purchase" nesse modo.
+- **Plano avançado.** O escalador (0630) tem parte do corpo `cardio` e caía em modo esteira ("3 × 20 min @ 8 km/h"). Os exercícios do slot
+  `cardio` do gerador agora saem com `mode:'time'`, 40 s por série (cabe na estimativa de duração).
+- **Textos.** "Sequência de 1 semana" (singular, maiúscula; `weekStreakLabel` em `lib/streak.js`), `1Y` vira `1A` em pt/pt-BR (e nos
+  idiomas latinos próximos), "Código aberto (AGPL v3)" em pt/pt-BR, e o card "Hoje" da Home não aplica mais `capitalize` ao nome da rotina.
+  O fingerprint de herança do pt-BR mudou por isso (duas chaves ganharam override explícito).
+- **Nomes de exercícios em pt/pt-BR.** `exerciseNameFor` monta o nome com `titleNamePt` (de/da/e/com/sem/em/para... em minúscula fora da
+  primeira palavra, inglês entre parênteses também) e `exerciseNameClass` devolve '' para esses idiomas (lista `TITLED_NAME_LANGS`).
+  Os pacotes gerados não foram tocados. O foco do treino e o resumo do treino passaram a usar a classe em vez de CSS fixo.
+- **Configurações enxutas.** `BRAND.leanSettings` (lib/brand.js, `true` aqui) esconde Zepp OS, Integrações (e as páginas de Apple Health /
+  Health Connect, que ficam dentro dela), Temas da época, os módulos Treinador IA / Integrações / Temas da época e as linhas
+  "Desenhos dos exercícios" e "Animações dos exercícios", também na busca. Só esconde. Os módulos continuam ligados por baixo: as
+  decorações de Halloween e Natal ainda aparecem na época, sem como desligar (decisão do dono, se quiser desligar por padrão). Os testes
+  das telas antigas rodam com a flag desligada; `settings-lean.test.jsx` cobre os dois estados.
+- **Inglês entre parênteses.** `enParensOn` (`lib/name-prefs.js`): a escolha do perfil sempre vale; sem escolha, pt e pt-BR mostram só o
+  nome em português. Nada estava carimbado no perfil (a chave simplesmente faltava), então não houve migração.
+- **Pulado:** remover as rotinas antigas do quiz sem treino registrado ao refazer o plano. As rotinas geradas não têm marca de origem, e
+  a marca mexeria no formato sincronizado; fica para quando houver tempo para testar direito.
