@@ -518,3 +518,25 @@ Achados da verificação no navegador (ACCESS_MODE ligado, RENEW_URL definido):
   Para um servidor novo, crie o dono com o modo desligado e ligue depois (a D7 já precisa disso para os perfis antigos).
 - `node scripts/build-api-docs.mjs` (citado no plano) não existe neste fork; a conferência do OpenAPI é o
   `openapi-routes.test.js` dentro de `api npm test`, que passa.
+
+## C3: curadoria de vídeos dos exercícios dos templates
+
+- **49 dos 54 exercícios dos pools** (`plan-generator.js`, home e academia) têm vídeo em `EXERCISE_VIDEOS`
+  (`lib/exercise-videos.js`); o resto cai no botão "Ver como fazer" (busca no YouTube em português). A planilha
+  `docs/curadoria-videos.csv` tem uma linha por exercício, com a busca sugerida, a URL escolhida, o status e uma coluna
+  extra `titulo_canal` (título e canal lidos no oEmbed na hora da curadoria) para o dono revisar.
+- **Desvio do plano:** o plano mandava entregar a planilha ao dono para aprovar antes de commitar. O dono autorizou
+  enviar para produção todos os vídeos propostos que fossem confiáveis, então a aprovação foi essa autorização geral e o status
+  ficou `proposto-verificado-oembed` (não `aprovado`). Critério: título compatível com a mesma variação do exercício, canal
+  brasileiro de treino/fisioterapia, embed permitido (`playableInEmbed`), formato horizontal e duração de 13 s a 8,5 min
+  (o plano pedia < 3 min; não deu para cobrir tudo com isso, vários bons demos têm de 3 a 8 min). Os ids vieram dos
+  resultados de busca, nunca de memória, e cada um foi conferido no oEmbed (200). Não é uma revisão humana de conteúdo.
+- **Sem vídeo (5):** `0781` afundo estático sem carga, `1039` agachamento na máquina de alavanca, `1206` pull through na
+  polia, `1241` bird dog e `6435` ponte com apoio nos calcanhares. Só achei demonstrações em outro idioma ou de uma variação
+  diferente; melhor sem vídeo do que com o errado.
+- **Aproximações aceitas** (conferir se quiser algo mais exato): `4604` (PVC good morning) usa um "Good Morning - Bom dia" só
+  com o peso do corpo; `0612` usa um vídeo de afundo; `2398` (flexão fechada de joelhos) usa a flexão "diamante" de joelhos;
+  `1459` (terra romeno com halteres) usa um "Stiff com halteres"; `0871` (tuck crunch) usa "supra abdominal com joelhos no peito".
+- Troca de um vídeo: mude o id em `exercise-videos.js` **e** a linha do CSV; `exercise-videos.test.js` falha se os dois
+  divergirem. `node scripts/videos/verify.mjs` confere na rede se os 49 ainda respondem 200 (rodar de tempos em tempos:
+  vídeos somem ou perdem o embed).
