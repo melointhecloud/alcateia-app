@@ -213,3 +213,23 @@ IPv6 apenas em ambientes legados, IPv4 e IPv6 nos criados depois de 16/10/2025);
 docs.railway.com/networking/public-networking/specs-and-limits (cabeçalhos de requisição,
 `X-Real-IP`, `X-Forwarded-Proto` sempre `https`); Railway Station, threads sobre nginx e
 `railway.internal` (`resolver [fd12::10] ipv6=on valid=1s`).
+
+## 9. Valores medidos no deploy real (2026-11-04)
+
+Projeto `alcateia` na Railway, ambiente `production`, serviços `api` (volume em `/data`) e `web`.
+
+- Domínio: `alcateia.up.railway.app` (porta de destino 8080). Domínio próprio previsto:
+  `app.alcateiademonstros.com.br` (CNAME para o alvo que a Railway mostra, mais o TXT de verificação
+  `_railway-verify.app`; em `railway domain list --service web` aparecem os valores).
+- `RESOLVER=[fd12::10]` e `RESOLVER_IPV6=on` funcionaram: `/api/health` responde em cerca de 0,6 s.
+- O proxy da Railway chega ao `web` pela faixa `100.64.0.0/10` (cada requisição aparece como
+  `100.64.0.x` no log do nginx). A Railway define `X-Real-IP` com o IP da visitante e descarta um
+  `X-Real-IP` ou `X-Forwarded-For` enviado pelo cliente (teste de falsificação feito com `curl`).
+  Por isso: `REAL_IP_FROM=100.64.0.0/10` e `REAL_IP_HEADER=X-Real-IP`.
+- Ao trocar para o domínio próprio, atualizar `RP_ID` e `ORIGIN` no `api` (e fazer redeploy).
+- Deploy feito com `railway up` a partir de um export limpo do git (`git archive HEAD`), sendo
+  `api/` enviado com `--path-as-root` e o `web` com `--path-as-root` na raiz do export e a variável
+  `RAILWAY_DOCKERFILE_PATH=web/Dockerfile`. A Railway não aceita `VOLUME` no Dockerfile (removido do
+  `api/Dockerfile`).
+- Ordem do primeiro acesso: o `api` sobe com `INVITE_ONLY=0`, o dono se cadastra (vira admin) e só então
+  `INVITE_ONLY=1`.
