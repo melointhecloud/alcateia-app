@@ -326,3 +326,39 @@ Idioma: o padrão vem do servidor, `DEFAULT_LANG=pt-BR` (GET /api/config `defaul
   trocar a condição. Ícone `heart` (o app não tem ícone de comida e o plano mandava não acrescentar dependências). O selo
   usa `text-transform:none` para não virar "Em Breve" (`.tag` capitaliza).
 - 4 chaves novas nos 19 packs; no pt-BR entram como `PT_BR_OVERRIDES` (o fingerprint de herança não muda).
+
+## D1: direitos de acesso (`api/entitlements.js`)
+
+Módulo puro (sem I/O, sem dependência nova; só `normalizeEmail` do `password.js`). Testes em
+`api/test/entitlements.test.js` (48). Onde nos afastamos do plano (a spec §7 manda):
+
+- **`subscription_created` ativa**, como a spec §7.2 (o plano dizia que sozinho não ativava). Para não liberar quem não
+  pagou, o pedido é recusado quando `data.status` é um estado conhecido de não pago (`waiting_payment`, `pending`,
+  `refused`, `refunded`, `chargedback`, `canceled`...). O plano usava lista de permissão (`status !== 'paid'`); aqui é lista
+  de negação, para que um valor de status diferente do esperado nunca tranque quem pagou. Mesmo critério para
+  `offer_type` (só `orderbump`, `upsell`, `downsell` são ignorados; ausente ou `main` vale).
+- **Nova assinatura de quem já teve outra** (compra aprovada com outro `subscription.id`) é adotada; o plano a descartava
+  por causa da guarda "outra assinatura", e quem voltasse depois de cancelar nunca reativaria. A guarda continua para
+  renovação/retomada/reembolso/pausa/cancelamento de assinatura antiga. `validUntil` nunca encurta.
+- **`late` e `renewal_refused`: registro nenhum** (a spec diz "sem mudança"; o plano gravava `lastEvent`). `refund_requested`,
+  `dispute_defense_requested` e demais eventos só registram `lastEvent`/`updatedAt`.
+- **Plano**: `recurrence_period` fora de 30/90/180 vira mensal de 30 dias (spec); o plano usava o número como dias.
+  `CAKTO_PLANS` só vale com `plan` em mensal/trimestral/semestral/manual e `days > 0`; entrada ruim cai na recorrência.
+- **Sem `next_payment_date`**: parte de `paidAt`, ou de agora se não houver; em `subscription_resumed` e
+  `subscription_late_recovered` parte de `max(paidAt, agora)` (o `paidAt` do pedido original ficaria no passado).
+- **Nunca lança**: payload/lista/db/opções malformados, datas fora do limite da `Date` e até getter que lança voltam sem
+  mudança com `reason` (`payload-invalid`, `event-missing`, `data-missing`, `data-invalid`, `email-invalid`, `not-paid`,
+  `not-main-offer`, `other-subscription`, `no-entitlement`, `no-effect`, `invalid-date`, `no-id`, `duplicate`,
+  `internal-error`). `grant` é a exceção: entrada do admin, lança `Error` ('e-mail inválido', 'validade inválida', 'plano
+  inválido', 'status inválido'); a rota deve capturar.
+- **API além do plano**: `processEvent` (devolve também `changed`, `results`, `reason`), `linkUser` (vincula `userId` ao
+  direito livre), `isActive` (o plano chamava `hasAccess`, que fica como apelido), `grant` aceita `status`
+  (`active`/`inactive`, padrão `active`) e mantém `userId`, `createdAt` e `subscriptionId` do registro existente.
+  `ingest` devolve `changed: true` também quando só `caktoSeen` mudou (quem chama precisa salvar).
+- Campo extra no direito: `canceled` (boolean; `subscription_canceled` marca, renovação limpa).
+- `now` é injetável e os testes sempre o injetam; se faltar, cai em `Date.now()` (para o `server.js` não precisar passá-lo).
+
+Pendências para a D7 (evento de teste real da Cakto): confirmar os nomes `data.paidAt`, `data.offer_type`, `data.status`,
+`data.subscription.next_payment_date`/`recurrence_period`, o formato de `data.id` nos eventos de assinatura, e se a
+Cakto entrega eventos fora de ordem (um `purchase_approved` atrasado depois de um `refund` do mesmo pedido reativaria o
+acesso; só `data.status` do próprio pedido protege hoje).
