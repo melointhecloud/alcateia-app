@@ -1,7 +1,6 @@
-/* scripts/videos/verify.mjs: a lógica (verifyAll, summarize) com fetch injetado, e o programa
-   executado como o CI o executa (mapa de produção vazio). Nenhum teste toca a rede. */
+/* scripts/videos/verify.mjs: a lógica (verifyAll, summarize) com fetch injetado, e uma checagem do
+   programa. Nenhum teste toca a rede (o programa real consulta o YouTube: rodar à mão ou no release). */
 import { describe, expect, it } from 'vitest'
-import { spawnSync } from 'node:child_process'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { oembedUrl, summarize, verifyAll } from '../../scripts/videos/verify.mjs'
@@ -67,9 +66,10 @@ describe('summarize (código de saída)', () => {
 })
 
 describe('programa', () => {
-  it('com o mapa de produção vazio sai 0 e diz que não há vídeo curado', () => {
-    const r = spawnSync(process.execPath, [script], { encoding: 'utf8' })
-    expect(r.status).toBe(0)
-    expect(r.stdout).toMatch(/nenhum vídeo curado/)
+  it('o script existe e o mapa de produção tem vídeos para ele conferir (sem tocar a rede)', async () => {
+    const { existsSync } = await import('node:fs')
+    expect(existsSync(script)).toBe(true)
+    const { EXERCISE_VIDEOS } = await import('../src/lib/exercise-videos.js')
+    expect(Object.keys(EXERCISE_VIDEOS).length).toBeGreaterThan(0)
   })
 })
