@@ -75,6 +75,8 @@ export const REST_SEC = 90
 export const SLACK = 1.2
 export const estimateMinutes = r => r.ex.reduce((a, e) => a + e.sets, 0) * (SET_SEC + REST_SEC) / 60
 const SET_BUDGET = Object.fromEntries(MINUTES.map(m => [m, Math.floor(m * SLACK * 60 / (SET_SEC + REST_SEC))]))
+// Série de um exercício de cardio de solo, em segundos (a conta de duração conta SET_SEC por série).
+const CARDIO_SEC = 40
 const FINISHER = new Set(['core', 'cardio', 'calves', 'arms', 'lateral', 'abduct'])
 
 const valid = i => !!i && GOALS.includes(i.goal) && PLACES.includes(i.place) && LEVELS.includes(i.level)
@@ -97,12 +99,13 @@ function buildRoutine(key, name, placeKey, input, sessionIndex) {
     const id = pick(POOLS[placeKey][slot], sessionIndex, used)
     if (!id) continue
     used.add(id)
-    ex.push({
-      id,
-      sets: FINISHER.has(slot) ? Math.min(base, 3) : base,
-      reps: slot === 'cardio' ? 20 : REPS[input.goal],
-      weight: 0,
-    })
+    const sets = FINISHER.has(slot) ? Math.min(base, 3) : base
+    // Os exercícios do slot de cardio são de solo (escalador, polichinelo, burpee): o app trataria o
+    // escalador (parte do corpo "cardio") como esteira, "20 min @ 8 km/h". Então saem como séries
+    // por tempo, com o modo escrito, que também cabe na conta da duração (SET_SEC).
+    ex.push(slot === 'cardio'
+      ? { id, sets, sec: CARDIO_SEC, weight: 0, mode: 'time', bodyweight: true }
+      : { id, sets, reps: REPS[input.goal], weight: 0 })
   }
   // Passou do orçamento de tempo: tira uma série por vez, do fim da lista (o que menos importa) para
   // o começo, sempre do exercício com mais séries, até caber. Nunca desce de 2 séries.

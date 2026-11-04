@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest'
 import { EXIDX } from './exercises.js'
 import { eqAvailable } from './equipment.js'
+import { modeOf, setsRepsOf, defaultConfig } from './history.js'
 import { generatePlan, estimateMinutes, SLACK, POOLS, GOALS, PLACES, LEVELS, DAYS, MINUTES, HOME_EQUIPMENT } from './plan-generator.js'
 
 const inputs = []
@@ -54,10 +55,27 @@ describe('generatePlan', () => {
       for (const e of r.ex) {
         expect(EXIDX[e.id], e.id).toBeTruthy()
         expect(e.sets).toBeGreaterThanOrEqual(2)
-        expect(e.reps).toBeGreaterThanOrEqual(8)
+        // exercício de solo do slot de cardio: série de 30 a 40 s, nunca "min @ km/h" de esteira
+        if (e.mode === 'time') { expect(e.sec).toBeGreaterThanOrEqual(30); expect(e.sec).toBeLessThanOrEqual(40); expect(modeOf(e)).toBe('time') }
+        else expect(e.reps).toBeGreaterThanOrEqual(8)
+        expect(modeOf(e), `${e.id} ${EXIDX[e.id].n}`).not.toBe('cardio')
         if (input.place === 'home') expect(eqAvailable(HOME_EQUIPMENT, EXIDX[e.id]), `${e.id} ${EXIDX[e.id].n}`).toBe(true)
       }
     }
+  })
+  it('escalador, polichinelo e burpee saem como séries de 40 s, sem parâmetros de esteira', () => {
+    const plan = generatePlan({ goal: 'conditioning', place: 'home', days: 5, minutes: 45, level: 'advanced' })
+    const cardio = plan.routines.flatMap(r => r.ex).filter(e => ['0630', '3094', '1160'].includes(e.id))
+    expect(new Set(cardio.map(e => e.id)).size).toBe(3)
+    for (const e of cardio) {
+      expect(e).toMatchObject({ mode: 'time', sec: 40, weight: 0 })
+      expect(e.min).toBeUndefined()
+      expect(e.speed).toBeUndefined()
+      expect(setsRepsOf(e)).toBe(`${e.sets} × 0:40`)
+      expect(modeOf(e)).toBe('time')
+    }
+    // a escolha é do gerador, não da configuração padrão de esteira que o app daria ao 0630
+    expect(defaultConfig('0630').speed).toBe(8)
   })
   it('"ambos" acrescenta uma rotina de casa fora do calendário', () => {
     const plan = generatePlan({ goal: 'tone', place: 'both', days: 3, minutes: 30, level: 'beginner' })
