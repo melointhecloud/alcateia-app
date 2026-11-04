@@ -300,3 +300,29 @@ Idioma: o padrão vem do servidor, `DEFAULT_LANG=pt-BR` (GET /api/config `defaul
 - `docs/curadoria-videos.csv` criado só com o cabeçalho `id,nome,busca_sugerida,url_escolhida,status`.
 - Nenhuma string nova em `t()` (o cartão reaproveita "Watch video" e o texto de privacidade já traduzidos); os packs
   de idioma não mudaram.
+
+## C2: "Ver como fazer" e card "Alimentação em breve"
+
+- **Onde o botão aparece.** Em `BuiltinMedia` (`components/Media.jsx`), no lugar onde a mídia do exercício aparecia, quando
+  `videoFor(ex)` é nulo: detalhe do exercício (`sheets.jsx`), cartão do exercício no treino (`Workout.jsx`, respeita
+  `gifSize` `off`/`mini`) e a sheet de configuração do exercício na rotina (`Media` com notas). Com vídeo curado aparece o
+  cartão do vídeo, nunca o botão. Exercício próprio (`custom`) não ganha: tem a mídia dele em `CustomMedia`. É um `<a>` real
+  (`class="exlink-card how-to-link"`), `target="_blank"` e `rel="noopener noreferrer"`; o href é só texto até o toque.
+- **Divergência do plano:** o plano falava em trocar o texto do botão "Watch on YouTube". Esse botão já existia em três menus
+  (detalhe, menu "mais" do treino, FocusView), como item de menu e não como mídia. Mantive os três, mas agora usam o mesmo
+  endereço (`lib/how-to.js`), e no detalhe ele só continua visível sob um vídeo curado ou em exercício próprio (sem vídeo o
+  "Ver como fazer" logo acima já faz a mesma busca; dois botões iguais seriam ruído). Chave nova `See how to do it`
+  ("Ver como fazer"); o subtítulo reaproveita `Opens a search for good form`.
+- **`youtubeSearchUrl(ex, localName)`**: com `localName` busca `<nome> exercício execução correta`; sem ele, o comportamento
+  antigo (nome em inglês + `form`). O nome com o original em inglês entre parênteses (`supino (barbell bench press)`) perde
+  o parêntese final quando ele é exatamente o `ex.n`; parênteses que fazem parte do nome ficam.
+- **Idioma.** `lib/how-to.js` (`howToUrl`) passa o nome traduzido (`exerciseNameFor`) só quando o idioma é `pt`/`pt-BR`; nos
+  demais idiomas a busca continua em inglês + `form` (as palavras "exercício execução correta" são portuguesas, então não
+  servem para os outros). O botão em si vem de `t()` em todos os idiomas.
+- **Card "Alimentação" na Home.** Título `Alimentação` (chave `Nutrition`), subtítulo `Plano alimentar e receitas`
+  (`Meal plan and recipes`) e selo `Em breve` (`Coming soon`), sem travessão. `div.card.soon-card` com `aria-disabled`,
+  sem botão nem link. Segue o módulo existente **Corpo** (`isOn(S, 'body')`): some em "Só treino" e quando Corpo está
+  desligado em Configurações, Módulos. Não criei módulo nem mecanismo novo; se um dia houver um módulo de alimentação, é
+  trocar a condição. Ícone `heart` (o app não tem ícone de comida e o plano mandava não acrescentar dependências). O selo
+  usa `text-transform:none` para não virar "Em Breve" (`.tag` capitaliza).
+- 4 chaves novas nos 19 packs; no pt-BR entram como `PT_BR_OVERRIDES` (o fingerprint de herança não muda).

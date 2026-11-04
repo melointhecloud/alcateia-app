@@ -3698,4 +3698,8 @@ export default {
   "Any day": "أي يوم",
   "Redo my plan": "إعادة بناء خطتي",
   "Answer the questions again and get a new week. Your old routines stay in Plan.": "أجب مرة أخرى لتحصل على أسبوع جديد. تبقى روتيناتك القديمة في الخطة.",
+  "See how to do it": "اعرف كيف تؤديه",
+  "Nutrition": "التغذية",
+  "Meal plan and recipes": "خطة وجبات ووصفات",
+  "Coming soon": "قريباً",
 }

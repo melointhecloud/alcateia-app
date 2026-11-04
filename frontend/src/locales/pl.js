@@ -3643,4 +3643,8 @@ export default {
   "Any day": "Dowolny dzień",
   "Redo my plan": "Ułóż mój plan od nowa",
   "Answer the questions again and get a new week. Your old routines stay in Plan.": "Odpowiedz jeszcze raz i dostaniesz nowy tydzień. Dotychczasowe plany treningowe zostają w zakładce Plan.",
+  "See how to do it": "Zobacz, jak to zrobić",
+  "Nutrition": "Odżywianie",
+  "Meal plan and recipes": "Plan posiłków i przepisy",
+  "Coming soon": "Wkrótce",
 }

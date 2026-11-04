@@ -3643,4 +3643,8 @@ export default {
   "Any day": "कोई भी दिन",
   "Redo my plan": "मेरा प्लान दोबारा बनाएँ",
   "Answer the questions again and get a new week. Your old routines stay in Plan.": "सवालों के जवाब फिर से दें और नया हफ़्ता पाएँ। आपके पुराने रूटीन योजना में बने रहेंगे।",
+  "See how to do it": "देखें कैसे करें",
+  "Nutrition": "पोषण",
+  "Meal plan and recipes": "भोजन योजना और रेसिपी",
+  "Coming soon": "जल्द आ रहा है",
 }

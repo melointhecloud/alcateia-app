@@ -3640,4 +3640,8 @@ export default {
   "Any day": "Будь-який день",
   "Redo my plan": "Скласти план заново",
   "Answer the questions again and get a new week. Your old routines stay in Plan.": "Відповідай ще раз і отримай новий тиждень. Попередні програми залишаться в розділі “План”.",
+  "See how to do it": "Як виконувати",
+  "Nutrition": "Харчування",
+  "Meal plan and recipes": "План харчування та рецепти",
+  "Coming soon": "Незабаром",
 }

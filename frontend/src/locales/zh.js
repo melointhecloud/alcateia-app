@@ -3643,4 +3643,8 @@ export default {
   "Any day": "任意一天",
   "Redo my plan": "重新制定我的计划",
   "Answer the questions again and get a new week. Your old routines stay in Plan.": "重新回答问题，就能得到新的一周。之前的训练计划会保留在“计划”里。",
+  "See how to do it": "查看做法",
+  "Nutrition": "饮食",
+  "Meal plan and recipes": "饮食计划和食谱",
+  "Coming soon": "即将推出",
 }

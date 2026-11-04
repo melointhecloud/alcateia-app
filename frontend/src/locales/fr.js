@@ -3643,4 +3643,8 @@ export default {
   "Any day": "N’importe quel jour",
   "Redo my plan": "Refaire mon plan",
   "Answer the questions again and get a new week. Your old routines stay in Plan.": "Réponds de nouveau et reçois une nouvelle semaine. Tes anciennes routines restent dans Plan.",
+  "See how to do it": "Voir comment faire",
+  "Nutrition": "Alimentation",
+  "Meal plan and recipes": "Plan de repas et recettes",
+  "Coming soon": "Bientôt disponible",
 }

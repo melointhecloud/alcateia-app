@@ -19,13 +19,28 @@ export function youtubeLinks(notes = '') {
     .map(url => [youtubeId(url), url]).filter(([id]) => id)).values()]
 }
 
-// "Watch on YouTube" on every exercise: a plain search for the exercise's English catalogue name
-// plus "form" (a custom exercise searches its own name). No API, no key, nothing embedded: the
-// address is only built here, and only opened after a tap (in the YouTube app where the phone
-// has it). Null when there is no name to search for.
-export function youtubeSearchUrl(ex) {
+// "Ver como fazer" / "Watch on YouTube" on every exercise: a plain search for the exercise's
+// English catalogue name plus "form" (a custom exercise searches its own name). With `localName`
+// (the name the app shows in the person's language) the search is in that language instead:
+// "<name> exercício execução correta", the Portuguese words the app is used in. The English
+// original that a translated name carries in brackets is dropped, so the search stays in one
+// language. No API, no key, nothing embedded: the address is only built here, and only opened
+// after a tap. Null when there is no name to search for.
+const squash = v => String(v || '').replace(/\s+/g, ' ').trim()
+const clean = v => squash(v).slice(0, 100)
+export function youtubeSearchUrl(ex, localName) {
   if (!ex || ex.missing) return null
-  const name = String(ex?.n || '').replace(/\s+/g, ' ').trim().slice(0, 100)
+  const name = clean(ex?.n)
   if (!name) return null
-  return 'https://www.youtube.com/results?search_query=' + encodeURIComponent(name + ' form').replace(/%20/g, '+')
+  let local = squash(localName)
+  // "supino (barbell bench press)": the brackets hold the English title, with or without the
+  // direction isolates that right-to-left packs add (lib/i18n-core.js englishInParens).
+  if (local && name) {
+    const tail = '(' + name + ')'
+    const cut = local.replace(/[\u2068\u2069]/g, '')
+    if (cut.toLowerCase().endsWith(tail.toLowerCase()) && cut.length > tail.length) local = cut.slice(0, cut.length - tail.length).trim()
+  }
+  local = local.slice(0, 100).trim()
+  const q = local ? local + ' exercício execução correta' : name + ' form'
+  return 'https://www.youtube.com/results?search_query=' + encodeURIComponent(q).replace(/%20/g, '+')
 }

@@ -3654,4 +3654,8 @@ export default {
   "Any day": "วันไหนก็ได้",
   "Redo my plan": "ทำแผนของฉันใหม่",
   "Answer the questions again and get a new week. Your old routines stay in Plan.": "ตอบคำถามอีกครั้งเพื่อรับสัปดาห์ใหม่ รูทีนเดิมของคุณยังอยู่ในแผน",
+  "See how to do it": "ดูวิธีทำ",
+  "Nutrition": "โภชนาการ",
+  "Meal plan and recipes": "แผนอาหารและสูตรอาหาร",
+  "Coming soon": "เร็วๆ นี้",
 }

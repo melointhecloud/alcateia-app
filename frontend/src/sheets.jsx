@@ -71,7 +71,8 @@ import { ownExerciseRest } from './lib/supersetFlow.js'
 import { entryTimes } from './lib/exercise-time.js'
 import { saveSessionAsRoutine, routineFromSession, routineAdditions, addToRoutine } from './lib/session-routines.js'
 import { shareRoutineSheet } from './components/RoutineShare.jsx'
-import { youtubeSearchUrl } from './lib/youtube.js'
+import { howToUrl } from './lib/how-to.js'
+import { videoFor } from './lib/exercise-videos.js'
 import { openExternal } from './components/CustomMedia.jsx'
 import { repeatSessionEntries } from './lib/session-repeat.js'
 import { swapActiveExercise } from './lib/active-exercise-swap.js'
@@ -1360,9 +1361,10 @@ function ExerciseDetail({ ex, close }) {
         stronger (issue #232). Cardio has none for the same kind of reason. */}
     {!isCardio(ex) && !isAssisted(ex) && <OneRM ex={ex} />}
     {instrFor(ex).length > 0 &&<><h4 className="sec">{t('How to')}{getLang() !== 'en' && !instrTranslated(ex) && <span className="dim" style={{ textTransform: 'none', letterSpacing: 0 }}> · {t('instructions in English')}</span>}</h4><ol className="steps-list">{instrFor(ex).map((s, i) => <li key={i}>{s}</li>)}</ol></>}
-    {/* A YouTube search for the exercise, opened after the tap and only then (lib/youtube.js). A
-        video link of the exercise's own stays first, in the media above. */}
-    {youtubeSearchUrl(ex) && <Button variant="ghost" icon="play" style={{ marginTop: 6 }} onClick={() => openExternal(youtubeSearchUrl(ex))}>{t('Watch on YouTube')}</Button>}
+    {/* A YouTube search for the exercise, opened after the tap and only then (lib/how-to.js).
+        Without a curated video the media above already ends in "Ver como fazer", the same
+        search, so this one stays only under a video (or a custom exercise's own media). */}
+    {howToUrl(ex) && (videoFor(ex) || isCustomEx(ex)) && <Button variant="ghost" icon="play" style={{ marginTop: 6 }} onClick={() => openExternal(howToUrl(ex))}>{t('Watch on YouTube')}</Button>}
     {/* The end of the sheet: what makes this exercise go away. Merge into… (#656,
         lib/exercise-merge.js) moves its history and plans onto another and then deletes or hides
         it, so it sits here with Delete, above it, rather than between History and the settings

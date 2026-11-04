@@ -3690,4 +3690,8 @@ export default {
   "Any day": "Valfri dag",
   "Redo my plan": "Gör om min plan",
   "Answer the questions again and get a new week. Your old routines stay in Plan.": "Svara igen och få en ny vecka. Dina gamla rutiner finns kvar i Plan.",
+  "See how to do it": "Se hur man gör",
+  "Nutrition": "Kost",
+  "Meal plan and recipes": "Måltidsplan och recept",
+  "Coming soon": "Kommer snart",
 }

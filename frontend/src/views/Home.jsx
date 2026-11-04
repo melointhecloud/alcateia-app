@@ -280,5 +280,12 @@ export default function Home() {
     </div>
       // Motivation off: no streak card, but the weekly sets line it carried keeps a card of its own.
       : S.homeMuscleSets === true && <div className="card wsets-solo"><WeeklySetsHomeLine S={S} onOpen={() => nav('/stats?section=lifts')} /></div>}
+
+    {/* Alimentação, em breve: só um aviso, sem ação. Segue o módulo Corpo (Ajustes, Módulos), então
+        o preset "Só treino" e quem desliga Corpo não o vê; nenhum mecanismo novo. */}
+    {on('body') && <div className="card soon-card" aria-disabled="true">
+      <CardHead icon="heart" tint="var(--green)" title={t('Nutrition')} sub={t('Meal plan and recipes')}
+        action={<span className="tag">{t('Coming soon')}</span>} />
+    </div>}
   </div>
 }

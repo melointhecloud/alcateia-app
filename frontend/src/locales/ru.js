@@ -3647,4 +3647,8 @@ export default {
   "Any day": "Любой день",
   "Redo my plan": "Составить план заново",
   "Answer the questions again and get a new week. Your old routines stay in Plan.": "Ответьте ещё раз и получите новую неделю. Прежние программы останутся в разделе “План”.",
+  "See how to do it": "Как выполнять",
+  "Nutrition": "Питание",
+  "Meal plan and recipes": "План питания и рецепты",
+  "Coming soon": "Скоро",
 }

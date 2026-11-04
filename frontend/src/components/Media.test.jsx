@@ -103,18 +103,21 @@ describe('inline YouTube', () => {
   })
 })
 
-// Sem mídia nativa neste fork: um exercício do catálogo não mostra animação nem figura, qualquer
-// que seja o tamanho escolhido (gifSize), e não há controle de minimizar para algo que não existe.
+// Sem mídia nativa neste fork: um exercício do catálogo sem vídeo curado não mostra animação nem figura,
+// qualquer que seja o tamanho escolhido (gifSize); só o link "Ver como fazer" (some com gifSize 'off' no
+// treino) e não há controle de minimizar para algo que não existe.
 describe('Media gifSize (sem mídia nativa)', () => {
   for (const gifSize of ['full', 'mini', 'off', 'huge']) {
     for (const minimizable of [true, false]) {
-      it(`gifSize '${gifSize}'${minimizable ? ' no treino' : ''}: nada para mostrar`, () => {
+      it(`gifSize '${gifSize}'${minimizable ? ' no treino' : ''}: só o link Ver como fazer, sem imagem`, () => {
         mocks.S = { gifSize }
         mount({ minimizable })
         expect(host.querySelector('.exmedia')).toBeFalsy()
         expect(host.querySelector('.giftoggle')).toBeFalsy()
-        expect(host.querySelector('img, video')).toBeFalsy()
-        expect(host.innerHTML).toBe('')
+        expect(host.querySelector('img, video, iframe')).toBeFalsy()
+        const link = host.querySelector('a.how-to-link')
+        if (minimizable && gifSize === 'off') expect(link).toBeNull()
+        else expect(link.getAttribute('href')).toBe('https://www.youtube.com/results?search_query=bench+press+form')
       })
     }
   }

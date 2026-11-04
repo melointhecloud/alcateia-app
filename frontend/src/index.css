@@ -1245,6 +1245,10 @@ button.whdr-gym{color:var(--acc-ink);cursor:pointer}
   user-select:none;-webkit-user-select:none;
 }
 .exlink-card:active{background:var(--press-fill)}
+/* the Home card that only announces what is coming: nothing to tap, so quieter than the live cards */
+.soon-card{cursor:default}
+.soon-card .tag{text-transform:none}
+a.exlink-card{text-decoration:none;box-sizing:border-box}
 .exlink-icon{
   width:34px;height:34px;border-radius:9px;
   display:flex;align-items:center;justify-content:center;

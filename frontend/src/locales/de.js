@@ -3663,4 +3663,8 @@ export default {
   "Any day": "Beliebiger Tag",
   "Redo my plan": "Meinen Plan neu erstellen",
   "Answer the questions again and get a new week. Your old routines stay in Plan.": "Beantworte die Fragen noch einmal und erhalte eine neue Woche. Deine alten Routinen bleiben unter Plan.",
+  "See how to do it": "So geht’s",
+  "Nutrition": "Ernährung",
+  "Meal plan and recipes": "Ernährungsplan und Rezepte",
+  "Coming soon": "Bald verfügbar",
 }

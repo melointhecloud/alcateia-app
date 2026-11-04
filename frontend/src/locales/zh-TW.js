@@ -3636,4 +3636,8 @@ export default {
   "Any day": "任何一天",
   "Redo my plan": "重新制定我的計畫",
   "Answer the questions again and get a new week. Your old routines stay in Plan.": "重新回答問題，就能得到新的一週。之前的訓練課表會保留在「計畫」裡。",
+  "See how to do it": "查看做法",
+  "Nutrition": "飲食",
+  "Meal plan and recipes": "飲食計畫與食譜",
+  "Coming soon": "即將推出",
 }

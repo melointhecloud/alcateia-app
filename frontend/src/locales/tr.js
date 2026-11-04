@@ -3643,4 +3643,8 @@ export default {
   "Any day": "Herhangi bir gün",
   "Redo my plan": "Planımı yeniden yap",
   "Answer the questions again and get a new week. Your old routines stay in Plan.": "Soruları yeniden yanıtla ve yeni bir hafta al. Eski rutinlerin Plan sekmesinde kalır.",
+  "See how to do it": "Nasıl yapıldığını gör",
+  "Nutrition": "Beslenme",
+  "Meal plan and recipes": "Beslenme planı ve tarifler",
+  "Coming soon": "Yakında",
 }

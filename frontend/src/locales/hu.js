@@ -3646,4 +3646,8 @@ export default {
   "Any day": "Bármelyik nap",
   "Redo my plan": "Terv újrakészítése",
   "Answer the questions again and get a new week. Your old routines stay in Plan.": "Válaszolj újra, és kapsz egy új hetet. A régi rutinjaid megmaradnak a Terv alatt.",
+  "See how to do it": "Nézd meg, hogyan kell",
+  "Nutrition": "Táplálkozás",
+  "Meal plan and recipes": "Étrend és receptek",
+  "Coming soon": "Hamarosan",
 }

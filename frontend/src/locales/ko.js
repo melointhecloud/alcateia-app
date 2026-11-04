@@ -3643,4 +3643,8 @@ export default {
   "Any day": "아무 요일",
   "Redo my plan": "내 플랜 다시 만들기",
   "Answer the questions again and get a new week. Your old routines stay in Plan.": "질문에 다시 답하면 새로운 한 주가 만들어져요. 이전 루틴은 계획에 그대로 남아요.",
+  "See how to do it": "하는 방법 보기",
+  "Nutrition": "식단",
+  "Meal plan and recipes": "식단 계획과 레시피",
+  "Coming soon": "곧 출시",
 }

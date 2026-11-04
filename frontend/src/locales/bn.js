@@ -3722,4 +3722,8 @@ export default {
   "Any day": "যেকোনো দিন",
   "Redo my plan": "আমার প্ল্যান আবার তৈরি করুন",
   "Answer the questions again and get a new week. Your old routines stay in Plan.": "আবার উত্তর দিন, নতুন সপ্তাহ পাবেন। আপনার পুরনো রুটিন প্ল্যানে থেকে যাবে।",
+  "See how to do it": "কীভাবে করতে হয় দেখুন",
+  "Nutrition": "পুষ্টি",
+  "Meal plan and recipes": "খাবারের পরিকল্পনা ও রেসিপি",
+  "Coming soon": "শীঘ্রই আসছে",
 }
