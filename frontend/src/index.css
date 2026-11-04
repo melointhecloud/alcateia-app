@@ -2697,8 +2697,9 @@ button.wl-summary{width:100%;padding:0 0 10px;text-align:start;border-radius:var
 .lbl2{font-size:var(--fs-footnote);color:var(--label-2);letter-spacing:var(--ls-small)}
 .today-row .ss{font-size:var(--fs-footnote);line-height:1.3;color:var(--label-2);margin-top:2px}
 .checkin-card .ttl{font-weight:500;font-size:var(--fs-body);line-height:1.25;letter-spacing:-.012em;margin-top:1px}
+/* No text-transform: the routine is shown as its owner named it ("Glúteo e Pernas", not "Glúteo E Pernas"). */
 .today-row .ttl{
-  font-weight:500;font-size:var(--fs-body);line-height:1.25;text-transform:capitalize;
+  font-weight:500;font-size:var(--fs-body);line-height:1.25;
   letter-spacing:-.012em;margin-top:2px;
   /* two lines before the ellipsis: "Leg Day — in progress" grows past one line in hu/tr/th/pt-BR */
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;text-overflow:ellipsis;

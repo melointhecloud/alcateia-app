@@ -3671,4 +3671,6 @@ export default {
   "We could not find an active subscription for this e-mail. Check the e-mail used in the purchase.": "ไม่พบการสมัครสมาชิกที่ใช้งานอยู่สำหรับอีเมลนี้ โปรดตรวจสอบอีเมลที่ใช้ซื้อ",
   "I already bought, create my account": "ฉันซื้อแล้ว สร้างบัญชีของฉัน",
   "I have an invite code": "ฉันมีรหัสเชิญ",
+  "1 week streak": "ต่อเนื่อง 1 สัปดาห์",
+  "1Y": "1Y",
 }

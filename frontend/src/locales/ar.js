@@ -3715,4 +3715,6 @@ export default {
   "We could not find an active subscription for this e-mail. Check the e-mail used in the purchase.": "لم نجد اشتراكاً نشطاً لهذا البريد الإلكتروني. تحقق من البريد المستخدم في الشراء.",
   "I already bought, create my account": "اشتريت بالفعل، أنشئ حسابي",
   "I have an invite code": "لدي رمز دعوة",
+  "1 week streak": "أسبوع واحد متتالي",
+  "1Y": "1Y",
 }

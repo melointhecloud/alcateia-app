@@ -2467,6 +2467,10 @@ export const PT_BR_OVERRIDES = {
   "We could not find an active subscription for this e-mail. Check the e-mail used in the purchase.": "Não encontramos uma assinatura ativa para este e-mail. Confira o e-mail usado na compra.",
   "I already bought, create my account": "Já comprei, criar minha conta",
   "I have an invite code": "Tenho um convite",
+  "1 week streak": "Sequência de 1 semana",
+  "1Y": "1A",
+  "{0} week streak": "Sequência de {0} semanas",
+  "free & open source (AGPL v3)": "Código aberto (AGPL v3)",
 }
 
 export default { ...pt, ...PT_BR_OVERRIDES }

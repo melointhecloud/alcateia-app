@@ -3660,4 +3660,6 @@ export default {
   "We could not find an active subscription for this e-mail. Check the e-mail used in the purchase.": "इस ईमेल के लिए हमें कोई सक्रिय सदस्यता नहीं मिली। खरीदारी में इस्तेमाल किया गया ईमेल जाँचें।",
   "I already bought, create my account": "मैं पहले ही खरीद चुकी/चुका हूँ, मेरा खाता बनाएँ",
   "I have an invite code": "मेरे पास इनवाइट कोड है",
+  "1 week streak": "1 हफ़्ते की स्ट्रीक",
+  "1Y": "1Y",
 }

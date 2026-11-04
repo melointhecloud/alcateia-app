@@ -248,7 +248,7 @@ export default {
   '5×5': '5×5',
   'Five sets of five on the main barbell lifts.': 'Cinq séries de cinq sur les gros mouvements à la barre.',
   'Build my own plan': 'Créer mon propre plan',
-  '{0} week streak': 'série de {0} semaines',
+  '{0} week streak': 'Série de {0} semaines',
   'this week': 'cette semaine',
   '{0} workout total': '{0} séance au total',
   '{0} workouts total': '{0} séances au total',
@@ -3660,4 +3660,6 @@ export default {
   "We could not find an active subscription for this e-mail. Check the e-mail used in the purchase.": "Nous n’avons pas trouvé d’abonnement actif pour cet e-mail. Vérifiez l’e-mail utilisé pour l’achat.",
   "I already bought, create my account": "J’ai déjà acheté, créer mon compte",
   "I have an invite code": "J’ai un code d’invitation",
+  "1 week streak": "Série de 1 semaine",
+  "1Y": "1A",
 }

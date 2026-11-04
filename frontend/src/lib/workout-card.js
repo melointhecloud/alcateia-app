@@ -12,6 +12,7 @@
 import { sessionSections, workoutVolume, workoutDuration, workoutDay, doneUnits } from './history.js'
 import { EXIDX } from './exercises.js'
 import { isWarmupRow } from './workout-model.js'
+import { weekStreakLabel } from './streak.js'
 import { MUSCLES, INERT, levelsOf, loadOfWorkouts } from './muscles.js'
 import { fmtDate, fmtDur, fmtNum, fmtVol, capWords } from './format.js'
 import { t, exerciseNameClass } from './i18n-core.js'
@@ -236,7 +237,7 @@ function storyBottom({ model, items, y, footY, footRoom, inner, width, rtl, meas
   if (model.streak > 0) {
     const size = 56
     items.push({ kind: 'flame', x: rtl ? start - size : start, y: y - 6, size })
-    const label = t('{0} week streak', model.streak)
+    const label = weekStreakLabel(model.streak)
     const room = inner - size - 18
     const [line] = wrapText(label, room, s => measure(s, 600, 40), 1)
     items.push({ kind: 'text', text: line, x: start + (size + 14) * dir, y: y + 40, size: 40, weight: 600, color: 'label' })
@@ -297,7 +298,7 @@ function squareBottom({ model, items, y, footY, inner, width, rtl, measure, map 
   if (model.streak > 0) {
     const size = 44
     items.push({ kind: 'flame', x: rtl ? start - size : start, y: cy, size })
-    const [line] = wrapText(t('{0} week streak', model.streak), colW - size - 16, s => measure(s, 600, 36), 1)
+    const [line] = wrapText(weekStreakLabel(model.streak), colW - size - 16, s => measure(s, 600, 36), 1)
     items.push({ kind: 'text', text: line, x: start + (size + 16) * dir, y: cy + size - 8, size: 36, weight: 600, color: 'label' })
   }
 }

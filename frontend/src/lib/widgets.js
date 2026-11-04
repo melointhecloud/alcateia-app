@@ -23,7 +23,7 @@ import { MOBILE, nativePlatform } from './mobile.js'
 import { EXIDX } from './exercises.js'
 import { t, tn, dateLocale } from './i18n.js'
 import { effectiveRoutines, exLine, bestWeightForEntry, sessionVolume, lastBW } from './history.js'
-import { streakInfo } from './streak.js'
+import { streakInfo, weekStreakLabel } from './streak.js'
 import { challengesOn, monthChallenges, progressOf } from './challenges.js'
 import { challengeTitle, challengeCount, doneLine } from './challenge-copy.js'
 import { deriveSessionName } from './session-merge.js'
@@ -116,7 +116,7 @@ function streakOf (S, today) {
     freezes: info.freezes,
     weekDone: info.thisWeekDone,
     next: info.next,
-    line: t('{0} week streak', info.current),
+    line: weekStreakLabel(info.current),
     bestLine: t('Best: {0}', info.best),
   }
 }
@@ -250,7 +250,7 @@ export function buildWidgetSnapshot (S, { today = todayISO() } = {}) {
       upNext: t('Up next'),
       thisWeek: t('This week'),
       weekStreak: t('Week streak'),
-      streak: t('{0} week streak', streak),
+      streak: weekStreakLabel(streak),
       lastPR: t('Last PR'),
       done: t('Done'),
       running: t('Workout running'),

@@ -15,6 +15,10 @@
 // So a holiday or a cold is covered without anyone having to remember a switch first: train 4
 // weeks, and the next missed one is forgiven. Two missed weeks need two freezes, i.e. 8 weeks.
 import { todayISO, isoOf, weekKey, weekStartOf } from './format.js'
+import { t } from './i18n-core.js'
+
+/** "6 week streak" in the UI language, with a singular of its own ("1 semana", not "1 semanas"). */
+export const weekStreakLabel = n => (n === 1 ? t('1 week streak') : t('{0} week streak', n))
 
 export const FREEZE_EVERY = 4
 export const FREEZE_MAX = 2

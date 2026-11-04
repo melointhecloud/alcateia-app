@@ -3680,4 +3680,6 @@ export default {
   "We could not find an active subscription for this e-mail. Check the e-mail used in the purchase.": "Wir haben kein aktives Abo für diese E-Mail gefunden. Prüfe die beim Kauf verwendete E-Mail.",
   "I already bought, create my account": "Ich habe schon gekauft, Konto erstellen",
   "I have an invite code": "Ich habe einen Einladungscode",
+  "1 week streak": "1 Woche in Folge",
+  "1Y": "1J",
 }

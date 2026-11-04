@@ -3707,4 +3707,6 @@ export default {
   "We could not find an active subscription for this e-mail. Check the e-mail used in the purchase.": "Vi hittade ingen aktiv prenumeration för den här e-postadressen. Kontrollera e-postadressen som användes vid köpet.",
   "I already bought, create my account": "Jag har redan köpt, skapa mitt konto",
   "I have an invite code": "Jag har en inbjudningskod",
+  "1 week streak": "1 vecka i rad",
+  "1Y": "1Å",
 }

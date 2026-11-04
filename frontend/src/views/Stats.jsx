@@ -51,7 +51,7 @@ const SET_COLORS = ['var(--blue)', 'var(--green)', 'var(--orange)', 'var(--purpl
 
 // The date range buttons under Body weight, and since issue #511 under Exercise progress too.
 // In days, 0 = everything; a function because the labels follow the current language.
-const rangeOptions = () => [{ value: 30, label: '1M' }, { value: 90, label: '3M' }, { value: 365, label: '1Y' }, { value: 0, label: t('All') }]
+const rangeOptions = () => [{ value: 30, label: '1M' }, { value: 90, label: '3M' }, { value: 365, label: t('1Y') }, { value: 0, label: t('All') }]
 // Where a range starts, in ms. Worked out once per pick rather than from each render's clock, so
 // the memoised chart arrays below keep their identity (LineChart drops its hover on a new one).
 const rangeStart = days => (days ? Date.now() - days * 86400000 : 0)
@@ -432,7 +432,7 @@ function EffortCard({ S }) {
   return <div className="card effort-card">
     <h2>{t('Effort')} <span className="dim">· {t('how close to failure')}{estimated ? ' · ' + t('estimated') : ''}</span></h2>
     <Segmented className="seg-range" value={win} onChange={setWin}
-      options={[{ value: 30, label: '30d' }, { value: 90, label: '90d' }, { value: 365, label: '1Y' }, { value: 0, label: t('All') }]} />
+      options={[{ value: 30, label: '30d' }, { value: 90, label: '90d' }, { value: 365, label: t('1Y') }, { value: 0, label: t('All') }]} />
     {sum.rated === 0 && sum.est === 0 ? <div className="muted small">{t('No rated sets in this period.')}</div> : <>
       {/* One figure leads (the average); the share of hard sets is its sentence, in ink, not a
           second headline in yellow competing with it. */}

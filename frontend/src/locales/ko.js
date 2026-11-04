@@ -3660,4 +3660,6 @@ export default {
   "We could not find an active subscription for this e-mail. Check the e-mail used in the purchase.": "이 이메일로 활성 구독을 찾지 못했습니다. 구매할 때 사용한 이메일을 확인해 주세요.",
   "I already bought, create my account": "이미 구매했어요, 계정 만들기",
   "I have an invite code": "초대 코드가 있어요",
+  "1 week streak": "1주 연속",
+  "1Y": "1Y",
 }
