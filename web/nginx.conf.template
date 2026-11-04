@@ -37,6 +37,14 @@ server {
     add_header Referrer-Policy "same-origin" always;
     add_header Content-Security-Policy "${CONTENT_SECURITY_POLICY}" always;
 
+    # Who the client is when another proxy sits in front of this one (Railway's edge). Written at
+    # start-up by web/12-real-ip.sh from REAL_IP_FROM / REAL_IP_HEADER: with REAL_IP_FROM empty
+    # (the default) it holds only a comment and $remote_addr is the TCP peer, as it always was.
+    # With it set, the header is believed only on a connection from those addresses, and
+    # $remote_addr (so the X-Real-IP / X-Forwarded-For passed on below, which the API's sign-in
+    # throttle counts by) becomes the visitor instead of the proxy.
+    include /etc/nginx/real-ip.conf;
+
     # API → backend container.
     # `^~` so this prefix beats the regex locations below: without it a request for a path such
     # as /api/anything.json would be matched by the \.(js|css|json|html)$ block instead and be
@@ -56,7 +64,14 @@ server {
         # fail fast — every /api request hangs until it times out. Anywhere else, set RESOLVER to
         # the DNS the platform actually provides: on Kubernetes that is the kube-dns/CoreDNS
         # service address (`kubectl -n kube-system get svc kube-dns`, commonly 10.96.0.10).
-        resolver ${RESOLVER} valid=10s ipv6=off;
+        #
+        # RESOLVER_IPV6 is `off` for Docker, whose embedded DNS answers A records and where an AAAA
+        # lookup is wasted work. A network that is IPv6 only (Railway's private network in the
+        # environments created before 2025-10-16: `*.railway.internal` resolves to IPv6 alone)
+        # needs `on`, or nginx never asks for the address and every /api call is a 502. An IPv6
+        # RESOLVER is written in brackets, [fd12::10]; RESOLVER=auto reads it from /etc/resolv.conf
+        # (web/11-resolver.envsh).
+        resolver ${RESOLVER} valid=10s ipv6=${RESOLVER_IPV6};
         set $api_upstream http://${BACKEND}:${PORT};
         # With a URI after the host, a proxy_pass built from variables sends that URI verbatim;
         # an empty one (the map's no-match case) sends the request's own target, as before.
@@ -98,7 +113,7 @@ server {
         proxy_buffering off;
         proxy_read_timeout 300s;
         proxy_send_timeout 300s;
-        resolver ${RESOLVER} valid=10s ipv6=off;
+        resolver ${RESOLVER} valid=10s ipv6=${RESOLVER_IPV6};
         set $api_upstream http://${BACKEND}:${PORT};
         # The same mapped target as the block above: under a prefix the upload has to reach the
         # API's /api/media/... route too.

@@ -540,3 +540,22 @@ Achados da verificação no navegador (ACCESS_MODE ligado, RENEW_URL definido):
 - Troca de um vídeo: mude o id em `exercise-videos.js` **e** a linha do CSV; `exercise-videos.test.js` falha se os dois
   divergirem. `node scripts/videos/verify.mjs` confere na rede se os 49 ainda respondem 200 (rodar de tempos em tempos:
   vídeos somem ou perdem o embed).
+
+## A7: nginx do `web` atrás da Railway (`web/nginx.conf.template`, `web/11-resolver.envsh`, `web/12-real-ip.sh`)
+
+Passos 4 e 6 da A7. Detalhes e valores em `docs/DEPLOY-RAILWAY.md`. Onde nos afastamos do plano:
+
+- **Resolvedor não confirmado na doc oficial.** O plano pedia conferir o DNS da rede privada. A documentação da Railway
+  não publica o endereço; `[fd12::10]` vem de respostas da comunidade. Em ambientes criados antes de 16/10/2025 o nome
+  resolve só IPv6 (doc oficial), e o `ipv6=off` fixo do template dava 502 (reproduzido com um DNS de teste só AAAA).
+  Por isso `ipv6=` virou `${RESOLVER_IPV6}` (padrão `off` na imagem, o que o compose sempre teve) e `RESOLVER=auto`
+  lê o primeiro nameserver de `/etc/resolv.conf`. O compose não repassa `RESOLVER_IPV6`, `REAL_IP_FROM` e
+  `REAL_IP_HEADER` (só a imagem tem os padrões), porque `docker-compose.yml` ficou fora desta tarefa.
+- **IP real: só `X-Real-IP`, e a faixa do proxy é medida, não lida.** A Railway documenta `X-Real-IP` e não publica
+  a faixa do proxy de borda nem diz como trata `X-Forwarded-For`. `REAL_IP_FROM` (padrão vazio = comportamento de
+  antes) recebe a faixa observada nos logs e `REAL_IP_HEADER` o cabeçalho (X-Real-IP se vazio). O include é gerado
+  na subida (`12-real-ip.sh`) porque `envsubst` não faz condicionais; recusa `0.0.0.0/0`, `::/0` e lixo.
+- **O limite do plano ("6 logins errados") é por conta; o por endereço é 20.** `ADDR_FAILS` dá 20 respostas erradas
+  livres por endereço; `ACCOUNT_FAILS` dá 5 por conta. O teste manual no doc usa mais de 20 tentativas.
+- **Pegadinha da porta.** O `web` precisa de `PORT=3000` (upstream) e escuta em `NGINX_PORT=8080`; a Railway usa
+  `PORT` para rotear o domínio, então a porta de destino do domínio do `web` tem de ser 8080 explicitamente.

@@ -1,0 +1,30 @@
+#!/bin/sh
+# Sourced (not run) by nginx's entrypoint, in file order, before the template is rendered (20):
+# what it exports is what envsubst sees. Two jobs, both about the DNS nginx asks for BACKEND.
+#
+# RESOLVER_IPV6 is pasted into `resolver ... ipv6=${RESOLVER_IPV6}` in nginx.conf.template, and
+# nginx accepts only on or off there; anything else would be a config nginx refuses at start-up
+# with an error that does not name the variable. Say so here instead.
+#
+# RESOLVER=auto takes the first nameserver of /etc/resolv.conf, bracketed when it is IPv6, which
+# is the form nginx wants. A platform that hands the container its own DNS (Railway's private
+# network among them) has already written it there, so nothing has to be copied by hand. Any other
+# RESOLVER value is used as given.
+case "${RESOLVER_IPV6:-off}" in
+  on|off) ;;
+  *)
+    echo "11-resolver.envsh: RESOLVER_IPV6=\"${RESOLVER_IPV6}\" is not valid. Use on or off (off for Docker's embedded DNS, on for an IPv6 resolver such as Railway's private network)." >&2
+    return 1
+    ;;
+esac
+
+if [ "${RESOLVER:-}" = "auto" ]; then
+  detected=$(awk '$1=="nameserver" { if ($2 ~ ":") print "[" $2 "]"; else print $2; exit }' "${RESOLV_CONF:-/etc/resolv.conf}" 2>/dev/null || true)
+  if [ -z "$detected" ]; then
+    echo "11-resolver.envsh: RESOLVER=auto, but /etc/resolv.conf has no nameserver. Set RESOLVER to the DNS address of the platform." >&2
+    return 1
+  fi
+  RESOLVER="$detected"
+  export RESOLVER
+fi
+echo "11-resolver.envsh: nginx resolver for BACKEND: ${RESOLVER:-unset} (ipv6=${RESOLVER_IPV6:-off})"

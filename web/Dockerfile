@@ -74,6 +74,9 @@ COPY web/nginx.conf.template /etc/nginx/templates/default.conf.template
 # of a server that 404s under the prefix. nginx's entrypoint runs these scripts in order; 05 is
 # before the template rendering at 20.
 COPY --chmod=755 web/05-check-base-path.sh /docker-entrypoint.d/
+# 11 validates RESOLVER_IPV6 and expands RESOLVER=auto, 12 writes the real-ip include the template
+# pulls in. Both run before the rendering at 20 (a .envsh is sourced, so its exports reach it).
+COPY --chmod=755 web/11-resolver.envsh web/12-real-ip.sh /docker-entrypoint.d/
 COPY --from=build /app/frontend/dist /usr/share/nginx/html
 
 # Set Default ENVs for nginx
@@ -85,6 +88,16 @@ ENV PORT=3000
 # resolver makes every /api request hang rather than fail, so any other runtime has to say
 # what its DNS is: on Kubernetes, the kube-dns/CoreDNS service address (commonly 10.96.0.10).
 ENV RESOLVER=127.0.0.11
+# `off` keeps nginx from asking the resolver for AAAA records, right for Docker's embedded DNS.
+# `on` for a resolver whose answers are IPv6 (Railway's private network, RESOLVER=[fd12::10]).
+ENV RESOLVER_IPV6=off
+# Empty = trust no proxy: nginx sees the TCP peer as the client, as before. Behind a proxy that
+# carries the visitor's address in a header (Railway: X-Real-IP), list the proxy's addresses or
+# CIDR ranges here (space or comma separated) and the header in REAL_IP_HEADER (web/12-real-ip.sh).
+# The header is believed only on connections from those addresses; never use a range that
+# includes the public internet.
+ENV REAL_IP_FROM=""
+ENV REAL_IP_HEADER=""
 # Empty = the CF-Connecting-IP header is dropped before it reaches the API, so it cannot be
 # forged by a direct client. Set to $http_cf_connecting_ip only when Cloudflare is really in
 # front. Defined here too, not just in compose, so the template always renders for anyone
