@@ -3,8 +3,10 @@
 // Stored as two synced settings: `accent` names the choice ('lime', 'sky', … or 'custom') and
 // `accentCustom` keeps the user's own colour as '#rrggbb', also while a preset is picked, so
 // going back to it brings the same colour back. An app from before this knows no 'custom' and
-// draws its default green (App.jsx falls back on any key it does not know), and leaves
+// draws its default (App.jsx falls back on any key it does not know), and leaves
 // `accentCustom` alone like any other key it does not read.
+// (An app from before the brand colours drew `lime`, the green, as its default; `alcateia`, the
+// gold of the logo, is the default now.)
 //
 // Nothing here trusts the stored value: it comes from other devices, backups and the server, and
 // the colour ends up in CSS custom properties and in the Android notification. Only a plain
@@ -16,7 +18,11 @@
 // A grey goes further, so it never looks like a switched-off button (THEMES below, accent.test.js).
 import { ACCENTS, ACCENT_INK } from './format.js'
 
-export const DEFAULT_ACCENT = 'lime'
+export const DEFAULT_ACCENT = 'alcateia'
+// The default before the brand colours (the green preset, `lime`). A profile that holds it with no
+// stamp for `accent` in `edited` never picked it: DEF carried it, so it is moved to the new default.
+// One that picked Green on purpose has the stamp (every change of a setting stamps it) and keeps it.
+const OLD_DEFAULT = 'lime'
 export const CUSTOM = 'custom'
 
 const HEX = /^#[0-9a-f]{6}$/i
@@ -40,6 +46,7 @@ export function sanitizeAccent(s) {
     if (hex) s.accentCustom = hex; else delete s.accentCustom
   }
   if ('accent' in s && !(typeof s.accent === 'string' && KEY.test(s.accent))) s.accent = DEFAULT_ACCENT
+  if (s.accent === OLD_DEFAULT && !(Number(s.edited?.accent) > 0)) s.accent = DEFAULT_ACCENT
   return s
 }
 

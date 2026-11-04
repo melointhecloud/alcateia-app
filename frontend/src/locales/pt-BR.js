@@ -1037,6 +1037,7 @@ export const PT_BR_OVERRIDES = {
   'Red': 'Vermelho',
   'Teal': 'Turquesa',
   'Yellow': 'Amarelo',
+  'Alcateia': 'Alcateia',
   'Enter how long it took (at least 1 minute).': 'Informe quanto tempo levou (pelo menos 1 minuto).',
   // --- AI Coach: why a job failed or was refused (lib/coach-api.js JOB_ERRORS, BYOK_ERRORS) ---
   'The Coach is taking a rest day. Try again tomorrow.': 'O Treinador tirou o dia de descanso. Tente de novo amanhã.',

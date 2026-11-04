@@ -1652,6 +1652,7 @@ export default {
   'Red': 'Piros',
   'Teal': 'Türkiz',
   'Yellow': 'Sárga',
+  'Alcateia': 'Alcateia',
   'Enter how long it took (at least 1 minute).': 'Add meg, meddig tartott (legalább 1 perc).',
   // --- AI Coach: why a job failed or was refused (lib/coach-api.js JOB_ERRORS, BYOK_ERRORS) ---
   'The Coach isn’t set up on this instance.': 'Az Edző nincs beállítva ezen a példányon.',

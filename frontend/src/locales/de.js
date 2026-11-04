@@ -1669,6 +1669,7 @@ export default {
   'Red': 'Rot',
   'Teal': 'Türkis',
   'Yellow': 'Gelb',
+  'Alcateia': 'Alcateia',
   'Enter how long it took (at least 1 minute).': 'Gib ein, wie lange es gedauert hat (mindestens 1 Minute).',
   // --- AI Coach: why a job failed or was refused (lib/coach-api.js JOB_ERRORS, BYOK_ERRORS) ---
   'The Coach isn’t set up on this instance.': 'Der Coach ist auf dieser Instanz nicht eingerichtet.',

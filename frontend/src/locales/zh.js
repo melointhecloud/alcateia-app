@@ -1649,6 +1649,7 @@ export default {
   'Red': '红色',
   'Teal': '青色',
   'Yellow': '黄色',
+  'Alcateia': 'Alcateia',
   'Enter how long it took (at least 1 minute).': '请输入用时（至少 1 分钟）。',
   // --- AI Coach: why a job failed or was refused (lib/coach-api.js JOB_ERRORS, BYOK_ERRORS) ---
   'The Coach isn’t set up on this instance.': '此实例上尚未设置教练。',

@@ -1697,6 +1697,7 @@ export default {
   'Red': 'লাল',
   'Teal': 'টিল',
   'Yellow': 'হলুদ',
+  'Alcateia': 'Alcateia',
   'Enter how long it took (at least 1 minute).': 'কত সময় লেগেছে লিখুন (অন্তত 1 মিনিট)।',
   // --- AI Coach: why a job failed or was refused (lib/coach-api.js JOB_ERRORS, BYOK_ERRORS) ---
   'The Coach isn’t set up on this instance.': 'এই সার্ভারে কোচ সেট আপ করা নেই।',

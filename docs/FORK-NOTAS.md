@@ -176,6 +176,7 @@ e `Support` (nos 19 packs).
 | Adesivos NFC: o link usa o endereço do próprio app (antes `opengym.ch/nfc`) | Idem. Com o app fechado o toque só abre o endereço (nada lê a query); com o app aberto funciona |
 | Ícones 180/512 gerados do logo do quiz; novo `icon-512-maskable.png` (logo a 70 % sobre fundo preto/laranja); manifest com `lang: pt-BR` e cores `#000000` | Marca |
 | `index.html`: título, descrição, textos de falha de boot; `theme-color` e fundo do boot em `#000`; hash da CSP em `web/Dockerfile` recalculado | Marca (o `csp.test.js` confere) |
+| Acento padrão `alcateia` (laranja do logo), variantes escuro/claro em `index.css`, migração em `lib/accent.js`, cor do boot em `index.html` | Marca (ver "Paleta do logo") |
 | `api/wrapped-copy.js` regenerado (`node scripts/build-wrapped-copy.mjs`) | Gerado a partir dos textos do frontend |
 | `README.md` reescrito | Sem badges nem imagens do upstream |
 
@@ -187,10 +188,7 @@ Idioma: o padrão vem do servidor, `DEFAULT_LANG=pt-BR` (GET /api/config `defaul
 
 - `BRAND.repoUrl` é placeholder (`https://github.com/SEU-USUARIO/alcateia-app`); trocar na Task A6. O
   `Source code` do Sobre e `INTEGRATIONS_DOCS` dependem dele. Não pode ir a produção com o placeholder (AGPL §13).
-- Paleta: fundo e `theme-color` em preto como o quiz. O acento do app continua o verde padrão (`lime`,
-  `#30d158`). O quiz mistura laranja (`#F88E28` no `quiz.css`, e o logo) e magenta (`#FF0DFF`, o tema da
-  página do quiz). Escolher o acento e então mudar `DEFAULT_ACCENT` (`lib/accent.js`), `accent` em
-  `store/useStore.js` e a cor do boot em `index.html` (e o hash da CSP, se o script mudar), mais os testes de acento.
+- ~~Paleta~~ (resolvida): o acento padrão do app agora é o laranja/dourado do logo. Ver "Paleta do logo" abaixo.
 - Fonte do quiz (Plus Jakarta Sans) não foi trazida (precisa copiar os woff2).
 - `frontend/public/app-icons/*` (112 px, ícones alternativos do app nativo) seguem os do upstream; só
   aparecem no app nativo, que o fork não tem.
@@ -199,6 +197,31 @@ Idioma: o padrão vem do servidor, `DEFAULT_LANG=pt-BR` (GET /api/config `defaul
 - Ainda dizem "app do celular" textos de recursos nativos (parear app móvel, Apple Watch, Health Connect);
   só aparecem quando há um servidor ou o app nativo, que o fork não tem.
 - Demo (`pages.yml`) e as imagens do `.github` do upstream seguem como vieram.
+
+### Paleta do logo (acento do app)
+
+Amostrado do `Projeto-Monstro-Logo-oficial.jpg` (PIL): preto `#000000`/`#050404` (metade esquerda e contornos),
+dourado `#e3962c` (metade direita), laranja `#ec8e2c`/`#e5882b` (braços e título), o `#F88E28` do `quiz.css`. O magenta
+`#FF0DFF` é só do tema da página do quiz e não está no logo; não foi usado.
+
+- Novo preset `alcateia` (`ACCENTS` em `lib/format.js`), o primeiro da lista e o padrão (`DEFAULT_ACCENT`,
+  `DEF.accent`). Os outros presets seguem (verde, azul, laranja do sistema, etc.); nada foi removido.
+- Escuro (padrão do app, fundo `#000`): fill `#f88e28` (8,9:1 no fundo, 7,2:1 no card; texto preto sobre ele 8,9:1),
+  pressionado `#e07e1c` (o `highlight-strong` do quiz, 7,2:1 com preto); o acento como texto é o próprio `#f88e28`.
+- Claro: o `#f88e28` dá só 2,2:1 no fundo, então o fill vira `#d26a07` (3,2:1 no fundo `#f2f2f7`, 3,6:1 no card branco,
+  texto preto 5,8:1; é o que `readableIn` dá a uma cor própria), pressionado `#a95405`, e o acento como texto
+  `#ab5606` (4,6:1 e 5,2:1). Valores em `index.css`, conferidos por `design-review.test.js` e `accent.test.js`.
+- O verde continua sendo o de "feito"/sucesso (`--green`, `--green-ink`, faixas-alvo dos gráficos); vermelho de erro idem.
+- `theme-color` e `background_color` já eram `#000000` (logo); a cor do boot em `index.html` passou de `#a3e635` para
+  `#f88e28`. Só o CSS do boot mudou, o script inline não: o hash da CSP não muda (`csp.test.js` passa).
+- Migração: perfil salvo com `accent: 'lime'` e sem carimbo de `edited.accent` (nunca escolheu; era o `DEF`) passa ao padrão
+  novo em `sanitizeAccent` (todos os caminhos de carga/sync). Quem escolheu Verde de propósito tem o carimbo e mantém.
+- Nome do swatch: "Alcateia" (mesmo texto nos 19 packs).
+- Fica como estava (marca do upstream, fora do escopo de "cores"): o halter do boot, dos relatórios impressos e do cartão
+  de compartilhar. Os relatórios impressos mantêm o verde-limão (`--lime`), que ali marca "subiu"; trocar é decisão de marca.
+- Observação: com acento laranja, o botão "Começar" do tab bar em treino ativo (`.rec`, laranja do sistema com anel
+  pulsante e cronômetro) fica da mesma família do estado parado; o que distingue é o anel e o tempo. O swatch "Laranja"
+  do sistema (`#ff9f0a`) fica parecido com o "Alcateia".
 
 ## A5: padrões de produção e imagens locais
 

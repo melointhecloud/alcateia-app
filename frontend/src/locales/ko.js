@@ -1649,6 +1649,7 @@ export default {
   'Red': '빨강',
   'Teal': '청록',
   'Yellow': '노랑',
+  'Alcateia': 'Alcateia',
   'Enter how long it took (at least 1 minute).': '걸린 시간을 입력하세요(최소 1분).',
   // --- AI Coach: why a job failed or was refused (lib/coach-api.js JOB_ERRORS, BYOK_ERRORS) ---
   'The Coach isn’t set up on this instance.': '이 인스턴스에는 코치가 설정되어 있지 않습니다.',

@@ -1639,6 +1639,7 @@ export default {
   'Red': 'Червоний',
   'Teal': 'Бірюзовий',
   'Yellow': 'Жовтий',
+  'Alcateia': 'Alcateia',
   'Enter how long it took (at least 1 minute).': 'Вкажи, скільки це тривало (щонайменше 1 хвилину).',
   // --- AI Coach: why a job failed or was refused (lib/coach-api.js JOB_ERRORS, BYOK_ERRORS) ---
   'The Coach isn’t set up on this instance.': 'Тренер не налаштований на цьому сервері.',

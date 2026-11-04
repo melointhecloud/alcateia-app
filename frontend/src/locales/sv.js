@@ -1670,6 +1670,7 @@ export default {
   'Red': 'Röd',
   'Teal': 'Turkos',
   'Yellow': 'Gul',
+  'Alcateia': 'Alcateia',
   'Enter how long it took (at least 1 minute).': 'Ange hur lång tid det tog (minst 1 minut).',
   // --- AI Coach: why a job failed or was refused (lib/coach-api.js JOB_ERRORS, BYOK_ERRORS) ---
   'The Coach isn’t set up on this instance.': 'Coachen är inte konfigurerad på den här instansen.',

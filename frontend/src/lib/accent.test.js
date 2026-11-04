@@ -1,8 +1,8 @@
 // @vitest-environment happy-dom
 import { describe, expect, it } from 'vitest'
-import { ACCENTS } from './format.js'
+import { ACCENTS, ACCENT_INK } from './format.js'
 import {
-  cleanHex, sanitizeAccent, accentKey, accentValue, contrast, inkOn, readableIn, adjustedIn,
+  DEFAULT_ACCENT, cleanHex, sanitizeAccent, accentKey, accentValue, contrast, inkOn, readableIn, adjustedIn,
   customAccentVars, inkIn, accentPair, applyAccent, applyTintFallback, THEMES, isGrey, inkOnBoth, mix, GREY_TEXT, GREY_GAP,
 } from './accent.js'
 import { mergeStates, stampChange } from './sync-merge.js'
@@ -24,20 +24,80 @@ describe('sanitizeAccent', () => {
   })
   it('keeps an unknown preset word (a newer app’s) but not junk', () => {
     expect(sanitizeAccent({ accent: 'mint' }).accent).toBe('mint')
-    expect(sanitizeAccent({ accent: '"><script>' }).accent).toBe('lime')
-    expect(sanitizeAccent({ accent: 42 }).accent).toBe('lime')
+    expect(sanitizeAccent({ accent: '"><script>' }).accent).toBe('alcateia')
+    expect(sanitizeAccent({ accent: 42 }).accent).toBe('alcateia')
     expect(sanitizeAccent({ theme: 'dark' })).toEqual({ theme: 'dark' })
+  })
+})
+
+// The default accent is the orange of the logo (#F88E28). Profiles that were saved with the
+// previous default (the green preset, `lime`) and never chose it are moved over; a choice made on
+// purpose is stamped in `edited` and stays.
+describe('the default accent is the logo orange', () => {
+  it('is a preset, and the one drawn when nothing is stored', () => {
+    expect(DEFAULT_ACCENT).toBe('alcateia')
+    expect(ACCENTS.alcateia).toBe('#f88e28')
+    expect(accentKey({})).toBe(DEFAULT_ACCENT)
+  })
+  it('moves a profile that holds the old default without having chosen it', () => {
+    expect(sanitizeAccent({ accent: 'lime' }).accent).toBe('alcateia')
+    expect(sanitizeAccent({ accent: 'lime', edited: {} }).accent).toBe('alcateia')
+    expect(sanitizeAccent({ accent: 'lime', edited: { accent: 0 } }).accent).toBe('alcateia')
+    expect(sanitizeAccent({ accent: 'lime', edited: { restSec: 5 } }).accent).toBe('alcateia')
+  })
+  it('keeps Green for a profile that picked it on purpose, and every other choice', () => {
+    expect(sanitizeAccent({ accent: 'lime', edited: { accent: 1_800_000_000_000 } }).accent).toBe('lime')
+    expect(sanitizeAccent({ accent: 'sky' }).accent).toBe('sky')
+    expect(sanitizeAccent({ accent: 'orange' }).accent).toBe('orange')
+    expect(sanitizeAccent({ accent: 'custom', accentCustom: '#30d158' }).accent).toBe('custom')
+  })
+  it('is stamped when the user picks Green, so the pick survives the next load', () => {
+    const T = 1_800_000_000_000
+    const prev = { _ts: T, unit: 'kg', workouts: [], routines: [], bodyweight: [], accent: 'alcateia' }
+    const next = JSON.parse(JSON.stringify(prev)); next.accent = 'lime'
+    next._ts = stampChange(prev, next, T + 5000)
+    expect(next.edited?.accent).toBeGreaterThan(0)
+    expect(sanitizeAccent(JSON.parse(JSON.stringify(next))).accent).toBe('lime')
+  })
+  it('settles an old copy coming through a merge too', () => {
+    const base = { _ts: 1, unit: 'kg', workouts: [], routines: [], bodyweight: [] }
+    const out = sanitizeAccent(mergeStates({ ...base, _ts: 10, accent: 'lime' }, { ...base, _ts: 20, accent: 'lime' }))
+    expect(accentValue(out)).toBe('alcateia')
+  })
+})
+
+// The measured contrast of the logo orange, in both themes (index.css has the same numbers).
+describe('the logo orange reads in both themes', () => {
+  const ORANGE = ACCENTS.alcateia
+  it('as a fill in the dark theme: 3:1 or better on the page and on a card, black text on it', () => {
+    for (const bg of THEMES.dark.bgs) expect(contrast(ORANGE, bg)).toBeGreaterThanOrEqual(3)
+    expect(ACCENT_INK.alcateia).toBe('#000000')
+    expect(contrast(ORANGE, '#000000')).toBeGreaterThanOrEqual(7)
+    expect(contrast(mix(ORANGE, '#000000', 0.25), '#000000')).toBeGreaterThanOrEqual(3)
+    expect(contrast('#e07e1c', '#000000')).toBeGreaterThanOrEqual(4.5)   // pressed (index.css --acc-2)
+  })
+  it('as words in the dark theme: 4.5:1 or better on the page and on a card', () => {
+    for (const bg of THEMES.dark.bgs) expect(contrast(ORANGE, bg)).toBeGreaterThanOrEqual(4.5)
+  })
+  it('in the light theme the fill is the shade a colour of the user’s own would get', () => {
+    expect(readableIn(ORANGE, 'light')).toBe('#d26a07')
+    for (const bg of THEMES.light.bgs) expect(contrast('#d26a07', bg)).toBeGreaterThanOrEqual(3)
+    expect(contrast('#d26a07', '#000000')).toBeGreaterThanOrEqual(4.5)   // black text on the fill
+    expect(contrast('#a95405', '#000000')).toBeGreaterThanOrEqual(3)
+  })
+  it('and as words in the light theme: 4.5:1 or better on the page and on a card', () => {
+    for (const bg of THEMES.light.bgs) expect(contrast('#ab5606', bg)).toBeGreaterThanOrEqual(4.5)
   })
 })
 
 describe('accentKey / accentValue', () => {
   it('draws a preset, the own colour, or the default', () => {
     expect(accentKey({ accent: 'sky' })).toBe('sky')
-    expect(accentKey({})).toBe('lime')
-    expect(accentKey({ accent: 'mint' })).toBe('lime')
-    expect(accentKey({ accent: 'toString' })).toBe('lime')
-    expect(accentKey({ accent: 'custom' })).toBe('lime')
-    expect(accentKey({ accent: 'custom', accentCustom: 'nope' })).toBe('lime')
+    expect(accentKey({})).toBe('alcateia')
+    expect(accentKey({ accent: 'mint' })).toBe('alcateia')
+    expect(accentKey({ accent: 'toString' })).toBe('alcateia')
+    expect(accentKey({ accent: 'custom' })).toBe('alcateia')
+    expect(accentKey({ accent: 'custom', accentCustom: 'nope' })).toBe('alcateia')
     expect(accentValue({ accent: 'custom', accentCustom: '#123ABC' })).toBe('#123abc')
     // the own colour is kept while a preset is the accent
     expect(accentValue({ accent: 'red', accentCustom: '#123abc' })).toBe('red')
@@ -190,7 +250,7 @@ describe('CSS for the own colour', () => {
     expect(el.style.getPropertyValue('--acc')).toBe('')
     expect(el.style.getPropertyValue('--knob-ring')).toBe('')
     applyAccent(el, 'url(x)', 'dark')
-    expect(el.dataset.accent).toBe('lime')
+    expect(el.dataset.accent).toBe('alcateia')
   })
 })
 
@@ -218,8 +278,8 @@ describe('the native countdown colours', () => {
   it('takes a preset key or the own colour', () => {
     expect(accentPair('sky')).toEqual({ accent: ACCENTS.sky, ink: '#ffffff' })
     expect(accentPair('#ffd60a')).toEqual({ accent: '#ffd60a', ink: '#000000' })
-    expect(accentPair('nonsense')).toEqual({ accent: ACCENTS.lime, ink: '#000000' })
-    expect(accentPair(undefined)).toEqual({ accent: ACCENTS.lime, ink: '#000000' })
+    expect(accentPair('nonsense')).toEqual({ accent: ACCENTS.alcateia, ink: '#000000' })
+    expect(accentPair(undefined)).toEqual({ accent: ACCENTS.alcateia, ink: '#000000' })
   })
 })
 
@@ -250,7 +310,7 @@ describe('sync with an app from before own colours', () => {
     const theirs = { ...base, _ts: 20, accent: 'custom', accentCustom: '#fff;}*{color:red' }
     const out = mergeStates(mine, theirs)
     expect('accentCustom' in out).toBe(false)
-    expect(accentValue(out)).toBe('lime')
+    expect(accentValue(out)).toBe('alcateia')
   })
 })
 

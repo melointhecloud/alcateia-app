@@ -33,8 +33,22 @@ describe('design review 1.4.5: text inks', () => {
   })
   it('every preset accent as text reaches 4.5:1 in the light theme', () => {
     const inks = [...css.matchAll(/:root\[data-theme="light"\]\[data-accent="(\w+)"\]\s*\{\s*--acc-ink:(#\w+)/g)]
-    expect(inks.map(m => m[1]).sort()).toEqual(['gold', 'lime', 'orange', 'pink', 'red', 'sky', 'teal', 'violet'])
+    expect(inks.map(m => m[1]).sort()).toEqual(['alcateia', 'gold', 'lime', 'orange', 'pink', 'red', 'sky', 'teal', 'violet'])
     for (const [, name, ink] of inks) for (const g of grounds(light)) expect(on(ink, g), name).toBeGreaterThanOrEqual(4.5)
+  })
+  it('the default accent (the logo orange) is the same in the base tokens and in its preset rule', () => {
+    const preset = rule(':root[data-accent="alcateia"]'), presetLight = rule(':root[data-theme="light"][data-accent="alcateia"]')
+    expect(token(dark, '--acc')).toBe('#f88e28'); expect(token(preset, '--acc')).toBe('#f88e28')
+    expect(token(light, '--acc')).toBe(token(presetLight, '--acc'))
+    expect(token(dark, '--acc-ink')).toBe('var(--acc)')
+    expect(token(light, '--acc-ink')).toBe(token(presetLight, '--acc-ink'))
+    // a fill needs 3:1 on both fills of its theme, its text 4.5:1, and the label on it 4.5:1 or its large-text 3:1
+    for (const g of grounds(dark)) expect(on(token(dark, '--acc'), g)).toBeGreaterThanOrEqual(3)
+    for (const g of grounds(dark)) expect(on(token(dark, '--acc'), g)).toBeGreaterThanOrEqual(4.5)   // --acc-ink is var(--acc) in the dark theme
+    for (const g of grounds(light)) expect(on(token(light, '--acc'), g)).toBeGreaterThanOrEqual(3)
+    for (const g of grounds(light)) expect(on(token(light, '--acc-ink'), g)).toBeGreaterThanOrEqual(4.5)
+    expect(on(token(dark, '--on-acc'), hex(token(dark, '--acc')))).toBeGreaterThanOrEqual(4.5)
+    expect(on(token(light, '--on-acc'), hex(token(light, '--acc')))).toBeGreaterThanOrEqual(4.5)
   })
   it('the gold ink reaches 4.5:1 in the light theme', () => {
     const gold = css.match(/--gold-ink:(#[0-9a-f]{6})/i)[1]
