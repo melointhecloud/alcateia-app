@@ -89,7 +89,8 @@ RUN apk add --no-cache bubblewrap \
 # refresh token has no business riding along in every archive that instruction produces. Owned
 # by `coach` because the job that writes it has already dropped to that user.
 RUN mkdir -p /coach-auth && chown coach:coach /coach-auth && chmod 700 /coach-auth
-VOLUME ["/coach-auth"]
+# No VOLUME instruction: Railway rejects it (its volumes are attached to the service). docker-compose
+# still mounts ./coach-auth here, and the Coach is disabled in the hosted Alcateia deployment.
 
 # ---------------------------------------------------------------------------------------------
 # Last, so that a plain `docker build ./api` keeps producing the runtime-free image.
