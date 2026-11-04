@@ -1,7 +1,7 @@
-import { describe, it, expect } from 'vitest'
+import { afterEach, describe, it, expect } from 'vitest'
 import {
   LANGS, INSTR_LANGS, EXERCISE_NAME_LANGS, DATE_LOCALES, DERIVED_LOCALES,
-  baseLang, derivePack, dateLocale, getLang, t, _setLangState, exerciseNameClass, exerciseNameFor, CASED_NAME_LANGS, RTL_LANGS
+  baseLang, derivePack, dateLocale, getLang, t, _setLangState, exerciseNameClass, exerciseNameFor, CASED_NAME_LANGS, TITLED_NAME_LANGS, titleNamePt, RTL_LANGS
 } from './i18n-core.js'
 import { EXDB } from './exercises-data.js'
 import de from '../locales/de.js'
@@ -132,6 +132,48 @@ describe('exerciseNameClass', () => {
   })
 })
 
+// "Flexão De Braços", "Dorsais E Costas Superiores" (E2E): CSS capitalize cannot leave the small
+// words of Portuguese alone, so pt and pt-BR are cased in exerciseNameFor and carry no class.
+describe('Portuguese exercise names', () => {
+  const pushUp = { id: '0662', n: 'push-up' }
+  const lats = { id: '0198', n: 'lat pulldown' }
+  const other = { id: '9999', n: 'cable crossover' }
+  const names = { '0662': 'flexão de braços', '0198': 'dorsais e costas superiores' }
+  afterEach(() => _setLangState('en', {}, null, null))
+
+  it('titleNamePt keeps de/da/e/com/sem/para... lower-case except as the first word', () => {
+    expect(titleNamePt('flexão de braços')).toBe('Flexão de Braços')
+    expect(titleNamePt('dorsais e costas superiores')).toBe('Dorsais e Costas Superiores')
+    expect(titleNamePt('agachamento com barra para as costas')).toBe('Agachamento com Barra para as Costas')
+    expect(titleNamePt('elevação de pernas sem apoio, na barra')).toBe('Elevação de Pernas sem Apoio, na Barra')
+    expect(titleNamePt('o remo no cabo')).toBe('O Remo no Cabo')
+    expect(titleNamePt('step-up com banda elástica')).toBe('Step-Up com Banda Elástica')
+    expect(titleNamePt('')).toBe('')
+  })
+
+  it.each(TITLED_NAME_LANGS)('%s: the name arrives cased, without the capitalize class, English part too', lang => {
+    _setLangState(lang, {}, null, names)
+    expect(exerciseNameFor(pushUp)).toBe('Flexão de Braços (Push-Up)')
+    expect(exerciseNameClass(pushUp)).toBe('')
+    expect(exerciseNameFor(lats)).toBe('Dorsais e Costas Superiores (Lat Pulldown)')
+    _setLangState(lang, {}, null, names, false)
+    expect(exerciseNameFor(pushUp)).toBe('Flexão de Braços')
+    // an exercise with no Portuguese name still shows its English title and still needs the CSS
+    expect(exerciseNameFor(other)).toBe('cable crossover')
+    expect(exerciseNameClass(other)).toBe('capitalize')
+    // "English names only" gives the English title back, and the casing with it
+    _setLangState(lang, {}, null, names, true, true)
+    expect(exerciseNameFor(pushUp)).toBe('push-up')
+    expect(exerciseNameClass(pushUp)).toBe('capitalize')
+  })
+
+  it('other languages are untouched', () => {
+    _setLangState('es', {}, null, { '0662': 'flexión de brazos' }, false)
+    expect(exerciseNameFor(pushUp)).toBe('flexión de brazos')
+    expect(exerciseNameClass(pushUp)).toBe('capitalize')
+  })
+})
+
 // #290 took the title-casing off every translated name so German would keep its own, and the
 // packs stored lower-case (pt-BR, hu, es, ru, it, fr) went lower-case everywhere with it. Which
 // packs carry real casing is a list, so it is checked against what the packs actually hold: a
@@ -160,11 +202,13 @@ describe('title-casing per exercise-name pack', () => {
 
   for (const lang of [...EXERCISE_NAME_LANGS, 'de-CH']) {
     const cased = CASED_NAME_LANGS.includes(baseLang(lang))
-    it(`${lang}: a translated name is ${cased ? 'left in its own casing' : 'title-cased like English'}`, () => {
+    // pt and pt-BR are cased by exerciseNameFor (titleNamePt), so they too carry no CSS class.
+    const noClass = cased || TITLED_NAME_LANGS.includes(baseLang(lang))
+    it(`${lang}: a translated name is ${cased ? 'left in its own casing' : noClass ? 'cased in exerciseNameFor' : 'title-cased like English'}`, () => {
       const names = packFor(baseLang(lang))
       const translated = EXDB.filter(e => names[e.id])
       _setLangState(lang, {}, null, names)
-      for (const ex of translated) expect(exerciseNameClass(ex), `${lang} ${ex.id}`).toBe(cased ? '' : 'capitalize')
+      for (const ex of translated) expect(exerciseNameClass(ex), `${lang} ${ex.id}`).toBe(noClass ? '' : 'capitalize')
       // An exercise the pack does not cover shows the lower-case English title either way.
       const untranslated = EXDB.find(e => !names[e.id])
       if (untranslated) expect(exerciseNameClass(untranslated)).toBe('capitalize')
@@ -191,13 +235,16 @@ describe('English-name switches with every exercise-name pack', () => {
       expect(ex, lang).toBeTruthy()
       _setLangState(lang, {}, null, names)
       // German keeps its own casing; a lower-case pack is title-cased like English.
-      const translatedClass = CASED_NAME_LANGS.includes(lang) ? '' : 'capitalize'
+      const titled = TITLED_NAME_LANGS.includes(lang)
+      const translatedClass = CASED_NAME_LANGS.includes(lang) || titled ? '' : 'capitalize'
+      const shown = titled ? titleNamePt(names[ex.id]) : names[ex.id]
       // A right-to-left language isolates the English part, brackets included (exerciseNameFor).
-      const english = RTL_LANGS.has(lang) ? `\u2068(${ex.n})\u2069` : `(${ex.n})`
-      expect(exerciseNameFor(ex)).toBe(`${names[ex.id]} ${english}`)
+      const en = titled ? titleNamePt(ex.n) : ex.n
+      const english = RTL_LANGS.has(lang) ? `\u2068(${en})\u2069` : `(${en})`
+      expect(exerciseNameFor(ex)).toBe(`${shown} ${english}`)
       expect(exerciseNameClass(ex)).toBe(translatedClass)
       _setLangState(lang, {}, null, names, false)
-      expect(exerciseNameFor(ex)).toBe(names[ex.id])
+      expect(exerciseNameFor(ex)).toBe(shown)
       expect(exerciseNameClass(ex)).toBe(translatedClass)
       _setLangState(lang, {}, null, names, true, true)
       expect(exerciseNameFor(ex)).toBe(ex.n)

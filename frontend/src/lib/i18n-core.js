@@ -209,6 +209,15 @@ export function _setDetails(newEnInstr, newEnDescs, newDescs, forLang = lang) {
   return current
 }
 
+// Portuguese names are stored lower-case like the rest, but CSS `capitalize` would turn them into
+// "Flexão De Braços" and "Dorsais E Costas Superiores". For these languages the name is cased
+// here instead (the first word and the content words, not the small words between them) and the
+// element gets no `capitalize` class (exerciseNameClass), the way a pack in CASED_NAME_LANGS does.
+export const TITLED_NAME_LANGS = ['pt', 'pt-BR']
+const PT_SMALL_WORDS = new Set(['de', 'da', 'do', 'das', 'dos', 'e', 'com', 'sem', 'em', 'na', 'no', 'nas', 'nos', 'para', 'por', 'a', 'o', 'as', 'os', 'ao', 'à', 'ou'])
+export const titleNamePt = s => String(s || '').replace(/(^|[\s(\-\/])(\p{Ll}+)/gu,
+  (m, pre, word, at) => pre + (at > 0 && PT_SMALL_WORDS.has(word) ? word : word[0].toUpperCase() + word.slice(1)))
+
 // Built-in catalogue names are bilingual when a translated name pack is active. A pack need not
 // be complete: German covers the equipment exercises and not the body-weight ones, and an
 // exercise the pack has no entry for keeps its English title, one exercise at a time.
@@ -224,10 +233,12 @@ export const exerciseNameFor = ex => {
   // context. Compared in the active language's own casing rules, not hardcoded to one —
   // this only ever differs from ordinary casing for languages with locale-specific rules
   // (e.g. Turkish dotless i), which does not include any language shipped here today.
+  const titled = TITLED_NAME_LANGS.includes(baseLang(lang))
+  const shown = titled ? titleNamePt(translated) : translated
   return translated.toLocaleLowerCase(lang) === ex.n.toLocaleLowerCase('en')
       || !enParens
-    ? translated
-    : `${translated} ${englishInParens(ex.n)}`
+    ? shown
+    : `${shown} ${englishInParens(titled ? titleNamePt(ex.n) : ex.n)}`
 }
 
 // In a right-to-left language the English title in brackets is a left-to-right run inside
@@ -256,7 +267,7 @@ export const CASED_NAME_LANGS = ['de']
 // Callers spread this onto the element that holds exerciseNameFor(ex)'s output, nothing else —
 // muscle and equipment labels next to it are t() strings and keep their own capitalize.
 export const exerciseNameClass = ex => (!enOnly && exerciseNames && ex && exerciseNames[ex.id]
-  && CASED_NAME_LANGS.includes(baseLang(lang)) ? '' : 'capitalize')
+  && (CASED_NAME_LANGS.includes(baseLang(lang)) || TITLED_NAME_LANGS.includes(baseLang(lang))) ? '' : 'capitalize')
 
 // Search both the localized and canonical English title without changing persisted data.
 export const exerciseNameSearchText = ex => {

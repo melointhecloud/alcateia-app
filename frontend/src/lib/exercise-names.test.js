@@ -4,7 +4,7 @@ import { EXDB } from './exercises-data.js'
 import V13_IDS from './catalogue-v13-ids.json' with { type: 'json' }
 import { checkName, stagedExercises } from '../../../scripts/de-name-rules.mjs'
 import {
-  EXERCISE_NAME_LANGS, RTL_LANGS, _setLangState, derivePack, exerciseNameFor, exerciseNameSearchText
+  EXERCISE_NAME_LANGS, RTL_LANGS, TITLED_NAME_LANGS, titleNamePt, _setLangState, derivePack, exerciseNameFor, exerciseNameSearchText
 } from './i18n-core.js'
 
 // Every translated-name pack, checked the same way. The packs are generated from
@@ -292,14 +292,18 @@ for (const lang of EXERCISE_NAME_LANGS) {
       // One whose name differs from the English, or the loanword rule below takes over.
       const exercise = EXDB.find(e => pack[e.id] && pack[e.id].toLocaleLowerCase(lang) !== e.n.toLocaleLowerCase('en'))
       const name = pack[exercise.id]
+      // Portuguese is cased in exerciseNameFor (small words stay lower-case), the English part too.
+      const titled = TITLED_NAME_LANGS.includes(lang)
+      const shown = titled ? titleNamePt(name) : name
+      const en = titled ? titleNamePt(exercise.n) : exercise.n
       _setLangState(lang, {}, null, pack)
       // A right-to-left language isolates the English part, brackets included (i18n-core exerciseNameFor).
-      const english = RTL_LANGS.has(lang) ? `\u2068(${exercise.n})\u2069` : `(${exercise.n})`
-      expect(exerciseNameFor(exercise)).toBe(`${name} ${english}`)
+      const english = RTL_LANGS.has(lang) ? `\u2068(${en})\u2069` : `(${en})`
+      expect(exerciseNameFor(exercise)).toBe(`${shown} ${english}`)
       expect(exerciseNameSearchText(exercise)).toContain(name)
       expect(exerciseNameSearchText(exercise)).toContain(exercise.n)
       _setLangState(lang, {}, null, pack, false)
-      expect(exerciseNameFor(exercise)).toBe(name)
+      expect(exerciseNameFor(exercise)).toBe(shown)
       _setLangState(lang, {}, null, pack, true, true)
       expect(exerciseNameFor(exercise)).toBe(exercise.n)
     })
@@ -319,7 +323,7 @@ for (const lang of EXERCISE_NAME_LANGS) {
     if (rules.loanword) {
       test('keeps loanword names without duplicating the English title', () => {
         _setLangState(lang, {}, null, pack)
-        expect(exerciseNameFor(EXIDX.get('1160'))).toBe('burpee')
+        expect(exerciseNameFor(EXIDX.get('1160'))).toBe(TITLED_NAME_LANGS.includes(lang) ? 'Burpee' : 'burpee')
       })
     }
   })
