@@ -45,6 +45,8 @@ vi.mock('../sheets.jsx', () => ({
 import Settings from './Settings.jsx'
 import { bindUI } from '../components/ui.jsx'
 import { useUI } from '../store/useUI.js'
+import { BRAND } from '../lib/brand.js'
+BRAND.leanSettings = false   // the upstream Settings; the lean deploy is settings-lean.test.jsx
 
 globalThis.__APP_VERSION__ ??= 'test'
 

@@ -6,6 +6,7 @@
 // by the same text and flash it (views/Settings.jsx). settings-pages.test.jsx renders every page
 // and checks that each entry below really is a row there.
 import { t } from '../lib/i18n.js'
+import { BRAND, leanHides } from '../lib/brand.js'
 import { ACCENT_NAMES } from '../lib/format.js'
 import { MODULES } from '../lib/modules.js'
 
@@ -53,6 +54,8 @@ export const ROOT_GROUPS = [['modules'], ['workout', 'alerts', 'reminders'], ['p
  * runs on the server, set up by its admin).
  */
 export function pageVisible(page, ctx) {
+  // BRAND.leanSettings: Zepp, Integrations and Seasonal themes are not for this deploy's buyer.
+  if (leanHides('pages', page)) return false
   // A page of a module that is off (ctx.mod answers isOn for this profile; absent: all on).
   if (PAGES[page]?.mod && ctx.mod && !ctx.mod(PAGES[page].mod)) return false
   if (page === 'reminders') return !!(ctx.user || ctx.mobile)
@@ -97,7 +100,7 @@ const MODULE_KW = {
 }
 export const SEARCH = [
   // Modules
-  ...MODULES.map(m => ({ page: 'modules', title: m.title, icon: m.icon, tint: m.tint, kw: MODULE_KW[m.id] + ' module turn on off hide' })),
+  ...MODULES.map(m => ({ modId: m.id, page: 'modules', title: m.title, icon: m.icon, tint: m.tint, kw: MODULE_KW[m.id] + ' module turn on off hide' })),
   // Workout
   { page: 'workout', title: 'Automatic warm-ups', icon: 'sunrise', tint: 'var(--orange)', mod: 'plates', kw: 'warm-up warmup ramp automatic generator compounds' },
   { page: 'workout', title: 'Rest timer', icon: 'timer', tint: 'var(--orange)', kw: 'rest pause break seconds minutes timer countdown' },
@@ -111,7 +114,7 @@ export const SEARCH = [
   { page: 'workout', title: 'Skip completed exercises', icon: 'skipForward', tint: 'var(--teal)', kw: 'skip jump done finished completed exercises cards focus next previous' },
   { page: 'workout', title: 'Weigh in before workouts', icon: 'scale', tint: 'var(--green)', mod: 'body', kw: 'body weight weigh scale start' },
   { page: 'workout', title: 'Keep screen awake', icon: 'phoneScreen', tint: 'var(--yellow)', kw: 'wake lock screen sleep display on', when: c => c.wakeOK || !c.mobile },
-  { page: 'workout', title: 'Exercise animations', icon: 'image', tint: 'var(--teal)', kw: 'gif animation video media pictures images', opts: ['Full', 'Small', 'Hidden'] },
+  { lean: true, page: 'workout', title: 'Exercise animations', icon: 'image', tint: 'var(--teal)', kw: 'gif animation video media pictures images', opts: ['Full', 'Small', 'Hidden'] },
   { page: 'workout', title: 'Animation quality', icon: 'image', tint: 'var(--indigo)', kw: 'animation quality resolution sharp hd download pack still px', when: c => c.mobile },
   { page: 'workout', title: 'Fine-tuning', icon: 'wrench', tint: 'var(--grey)', kw: 'advanced more options' },
   // Fine-tuning
@@ -172,14 +175,14 @@ export const SEARCH = [
   { page: 'look', title: 'Accent color', icon: 'palette', tint: 'var(--purple)', kw: 'color colour accent tint custom own picker hex rgb', opts: [...Object.values(ACCENT_NAMES), 'Your own color'], tkw: () => t('custom color picker') },
   { page: 'look', title: 'App icon', icon: 'grid', tint: 'var(--indigo)', kw: 'app icon home screen launcher logo dark light', when: c => !!c.appIcons },
   { page: 'look', title: 'Body diagram', icon: 'figureStrength', tint: 'var(--teal)', kw: 'muscle map body male female', opts: ['Male', 'Female'] },
-  { page: 'look', title: 'Exercise drawings', icon: 'figureStrength', tint: 'var(--teal)', kw: 'figure male female woman man picture', opts: ['Male', 'Female'] },
+  { lean: true, page: 'look', title: 'Exercise drawings', icon: 'figureStrength', tint: 'var(--teal)', kw: 'figure male female woman man picture', opts: ['Male', 'Female'] },
   { page: 'look', title: 'Set up an NFC sticker', icon: 'nfc', tint: 'var(--blue)', mod: 'checkin', kw: 'nfc sticker tag tap check in start workout locker machine', when: c => !!c.nfc },
   { page: 'look', title: 'Body weight', icon: 'scale', tint: 'var(--green)', mod: 'body', kw: 'weight card home' },
   { page: 'look', title: 'Recovery tips', icon: 'figureStrength', tint: 'var(--green)', mod: 'health', kw: 'recovery recovering rest muscle fatigue hint tip card home sore' },
   { page: 'look', title: 'Week and month recap', icon: 'chart', tint: 'var(--purple)', mod: 'motivation', kw: 'recap summary weekly monthly report your week your month card home share' },
   { page: 'look', title: 'Weekly sets on Home', icon: 'figureStrength', tint: 'var(--teal)', kw: 'weekly sets muscle volume range home card line' },
   { page: 'look', title: 'Monthly challenges', icon: 'target', tint: 'var(--orange)', mod: 'motivation', kw: 'challenge challenges monthly month goal goals badge badges trophy motivation' },
-  { page: 'look', title: 'Seasonal themes', icon: 'pumpkin', tint: 'var(--orange)', mod: 'seasonal', kw: 'seasonal season holiday halloween christmas advent calendar snow theme decoration' },
+  { lean: true, page: 'look', title: 'Seasonal themes', icon: 'pumpkin', tint: 'var(--orange)', mod: 'seasonal', kw: 'seasonal season holiday halloween christmas advent calendar snow theme decoration' },
   // Seasonal themes
   { page: 'themes', title: 'Halloween', icon: 'pumpkin', tint: 'var(--orange)', kw: 'halloween seasonal theme spooky spider pumpkin bats witch october decoration', opts: ['Auto', 'On', 'Off'] },
   { page: 'themes', title: 'Also during workouts', icon: 'play', tint: 'var(--green)', kw: 'halloween seasonal workout training decoration' },
@@ -298,6 +301,9 @@ export function searchSettings(query, ctx, tr = t) {
     if (PAGES[e.page].mod && !pageVisible(e.page, ctx)) continue
     if (e.when && !e.when(ctx)) continue
     if (e.mod && ctx.mod && !ctx.mod(e.mod)) continue
+    // Rows BRAND.leanSettings hides, and the pages under a hidden one (Seasonal themes).
+    if (e.lean && BRAND.leanSettings) continue
+    if (leanHides('pages', e.page) || (e.modId && leanHides('modules', e.modId))) continue
     consider(e, false)
   }
   return hits.sort((a, b) => a.rank - b.rank)

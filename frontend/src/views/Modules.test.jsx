@@ -28,6 +28,8 @@ vi.mock('../lib/mobile.js', () => ({ MOBILE: false }))
 
 import ModulesPage, { connectionNotes } from './Modules.jsx'
 import { bindUI } from '../components/ui.jsx'
+import { BRAND } from '../lib/brand.js'
+BRAND.leanSettings = false   // the upstream Settings; the lean deploy is settings-lean.test.jsx
 
 let host, root
 beforeEach(() => {

@@ -52,6 +52,8 @@ vi.mock('../components/CsvExportSheet.jsx', () => ({ csvExportSheet: vi.fn() }))
 import IntegrationsPage from './Integrations.jsx'
 import { importFromHevy } from '../sheets.jsx'
 import { searchSettings } from './settings-pages.js'
+import { BRAND } from '../lib/brand.js'
+BRAND.leanSettings = false   // the upstream Settings; the lean deploy is settings-lean.test.jsx
 
 let host, root, sheetHost, sheetRoot
 beforeEach(() => {

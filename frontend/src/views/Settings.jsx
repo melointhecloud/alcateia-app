@@ -569,12 +569,12 @@ export default function Settings({ page = null, find = null, via = null, entryKe
         {/* 'full'/'mini' is also what the tap-toggle on the workout animation writes; 'off' hides
             workout media entirely (library, detail sheet and picker thumbs are unaffected).
             Legacy/unknown values read as 'full'. */}
-        <Row icon="image" iconTint="var(--teal)" title={t('Exercise animations')}>
+        {!BRAND.leanSettings && <Row icon="image" iconTint="var(--teal)" title={t('Exercise animations')}>
           <Segmented className="seg-inline"
             options={[{ value: 'full', label: t('Full') }, { value: 'mini', label: t('Small') }, { value: 'off', label: t('Hidden') }]}
             value={S.gifSize === 'mini' || S.gifSize === 'off' ? S.gifSize : 'full'}
             onChange={v => update(s => { s.gifSize = v })} />
-        </Row>
+        </Row>}
         {/* Store apps: how sharp the animations are, from packs this device downloads. Per device,
             never synced: the profile is not touched (components/Animations.jsx). */}
         <AnimationQualityRow />
@@ -906,7 +906,7 @@ export default function Settings({ page = null, find = null, via = null, entryKe
         {/* Which figure the exercise animations show where both exist (about 940 exercises; the
             rest are drawn once). Only the picture changes: the exercise and its id stay the same,
             so nothing logged is touched, on this device or any other. */}
-        <Row icon="figureStrength" iconTint="var(--teal)" title={t('Exercise drawings')}
+        {!BRAND.leanSettings && <Row icon="figureStrength" iconTint="var(--teal)" title={t('Exercise drawings')}
           subtitle={t('Where an exercise is drawn on both figures. Your workouts stay exactly as they are.')}>
           <Segmented
             className="seg-inline"
@@ -914,10 +914,10 @@ export default function Settings({ page = null, find = null, via = null, entryKe
             value={figureOf(S)}
             onChange={v => update(s => { s.exFigure = v })}
           />
-        </Row>
+        </Row>}
       </Section>
       {/* Halloween and whatever comes after it (lib/seasonal.js), on a page of their own. */}
-      {on('seasonal') && <Section>
+      {on('seasonal') && !BRAND.leanSettings && <Section>
         <Row icon="pumpkin" iconTint="var(--orange)" title={t('Seasonal themes')} subtitle={t('Little extras for the time of year.')}
           value={activeSeasonTitle(S)} accessory="chevron" onClick={() => open('themes')} />
       </Section>}
@@ -1022,7 +1022,7 @@ export default function Settings({ page = null, find = null, via = null, entryKe
         {MOBILE && android && S.autoBackup && <BackupFolderRow />}
       </Section>
       {/* Apple Health / Health Connect moved to Integrations (1.4.4); the way there stays here. */}
-      {MOBILE && on('health') && <HealthLinkRow android={android} nav={nav} />}
+      {MOBILE && on('health') && !BRAND.leanSettings && <HealthLinkRow android={android} nav={nav} />}
       <Section title={t('Bring data in')}>
         <Row icon="download" iconTint="var(--teal)" title={t('Import backup')} accessory="chevron" onClick={() => fileRef.current.click()} tour="data-import" />
         <Row icon="download" iconTint="var(--teal)" title={t('Import from another app')}

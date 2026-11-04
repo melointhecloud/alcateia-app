@@ -3,6 +3,8 @@ import React, { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import Settings from './Settings.jsx'
+import { BRAND } from '../lib/brand.js'
+BRAND.leanSettings = false   // the upstream Settings; the lean deploy is settings-lean.test.jsx
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 
