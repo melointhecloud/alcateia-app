@@ -362,3 +362,31 @@ Pendências para a D7 (evento de teste real da Cakto): confirmar os nomes `data.
 `data.subscription.next_payment_date`/`recurrence_period`, o formato de `data.id` nos eventos de assinatura, e se a
 Cakto entrega eventos fora de ordem (um `purchase_approved` atrasado depois de um `refund` do mesmo pedido reativaria o
 acesso; só `data.status` do próprio pedido protege hoje).
+
+## D2: verificação do webhook (`api/cakto-webhook.js`)
+
+Função pura `verifyCakto({ rawBody, headers, secret, nowSec })` (só `node:crypto`, sem dependência nova). Testes em
+`api/test/cakto-webhook.test.js` (24). Devolve `{ ok: true, via: 'hmac' | 'secret' }` ou `{ ok: false, why }`; `ok: false`
+significa responder **401** (spec §7.2) e `why` (`no-secret`, `bad-body`, `bad-headers`, `bad-timestamp`, `stale`,
+`bad-signature`, `bad-json`, `bad-secret`, `internal-error`) é só para log. `rawBody` é o corpo BRUTO (Buffer, Uint8Array ou
+string); a rota D3 tem de capturá-lo antes do `JSON.parse`. `nowSec` (segundos, injetável) é o nome do plano.
+Onde nos afastamos do plano:
+
+- **Qualquer cabeçalho `X-Cakto-*` presente exige o HMAC inteiro.** O plano só olhava o HMAC com os dois cabeçalhos e,
+  com um só (ou vazio), caía para o `secret` do corpo. Aqui, existindo um deles (mesmo vazio ou sozinho), a verificação é
+  só por HMAC e falha com `bad-headers`; o `secret` do corpo só vale sem nenhum dos dois.
+- **Chave ausente, vazia ou só espaços rejeita sempre** (`no-secret`), nos dois caminhos; a chave do HMAC não é aparada.
+- **Timestamp estrito**: só dígitos (`bad-timestamp`); `""`, `"1e9"`, `"0x10"`, `"-5"`, `"12.5"` não valem. Passado ou
+  futuro além de 300 s é `stale` (300 s exatos ainda vale).
+- **Assinatura em hex validada antes de comparar** (64 dígitos, maiúsculas aceitas) e comparada como bytes com
+  `timingSafeEqual`; tamanho errado ou não hex apenas não casa, sem lançar. Com várias assinaturas separadas por vírgula,
+  vale se alguma `v1=` casar; outras versões (`v2=`) são ignoradas.
+- **`secret` do corpo comparado por resumo SHA-256** de ambos os lados (tamanho fixo), então tamanhos diferentes não lançam
+  nem vazam o comprimento. Só vale `secret` string.
+- **Nunca lança**: corpo que não é Buffer/string, `headers` ausente ou de tipo estranho, JSON inválido: `ok: false`.
+  Nomes de cabeçalho em qualquer caixa e valor em lista (usa o primeiro) são aceitos.
+
+Pendência para a D7: confirmar o formato da assinatura com um evento real da conta (nomes e valores de `X-Cakto-Timestamp` e
+`X-Cakto-Signature`, prefixo `v1=`, se vem em segundos, se o corpo assinado é exatamente o recebido, e se algum modo envia só
+um dos cabeçalhos, caso em que a regra acima o recusaria). Sem essa confirmação, o `secret` no corpo continua sendo o caminho
+que a documentação garante.
