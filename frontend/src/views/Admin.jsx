@@ -317,7 +317,7 @@ function AccessCard({ tick }) {
         return <div key={e.email} className="item" onClick={() => pick(e)}>
           <div className="grow"><div className="tt">{e.email} <span className={'adm-pill ' + tone} style={{ marginInlineStart: 4 }}>{label}</span>
             {e.canceled && <span className="adm-pill" style={{ marginInlineStart: 4 }}>canceled</span>}</div>
-            <div className="ss">{e.plan || 'manual'} · until {e.validUntil ? fmtDate(dayOf(e.validUntil)) : '–'} · {e.userName ? 'profile ' + e.userName : 'not signed up yet'}</div></div>
+            <div className="ss">{e.plan || 'manual'} · until {e.validUntil ? fmtDate(dayOf(e.validUntil), true) : '–'} · {e.userName ? 'profile ' + e.userName : 'not signed up yet'}</div></div>
           <Icon name="chevronRight" className="chev" />
         </div>
       })}

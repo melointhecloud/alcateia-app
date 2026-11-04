@@ -15,11 +15,14 @@ import { dateLocale } from '../lib/i18n-core.js'
 import { api, webauthnOK, passkeyAssertion, passwordLogin, passwordRegister, passwordResetRedeem } from '../lib/api.js'
 import { askAddDeviceData } from '../sheets.jsx'
 import { Row, Button } from './ui.jsx'
+import SupportLine from './SupportLine.jsx'
 
 // The server's floor (api/password.js MIN_LENGTH), checked here first so the common mistake is
 // answered without a round trip. The server still decides.
 export const MIN_PASSWORD = 10
 export const passwordOn = config => !!config?.password_login
+// Paid access (ACCESS_MODE=subscription, GET /api/config → access_mode): signing up needs the e-mail of the purchase.
+export const subscriptionOn = config => config?.access_mode === 'subscription'
 // An address the way the server stores and compares it (nameKey in api/password.js): NFKC,
 // trimmed, lower-cased.
 export const foldEmail = s => String(s || '').normalize('NFKC').trim().toLowerCase()
@@ -54,6 +57,8 @@ export function passwordError(e) {
     case 'too-long': return t('That password is too long.')
     case 'too-common': return t('That password is too easy to guess. Try a longer one, or a few random words strung together.')
     case 'name-taken': return t('Another profile already signs in with this name.')
+    // The one answer for an e-mail with no active purchase (also a lapsed, used or wrongly invited one).
+    case 'no-subscription': return t('We could not find an active subscription for this e-mail. Check the e-mail used in the purchase.')
     case 'email-invalid': return t('That is not an e-mail address.')
     case 'email-taken': return t('Another profile already uses this e-mail address.')
     case 'invite': return t('That invite code is not valid.')
@@ -154,41 +159,45 @@ export const openPasswordSignIn = onPasskey => ui().openSheet(close => <Password
 
 /* The password half of creating a profile. Name and invite code are the caller's state, so
    switching between passkey and password on the sign-up sheet keeps what was typed. */
-export function PasswordRegisterForm({ close, inviteOnly, name, setName, code, setCode }) {
+export function PasswordRegisterForm({ close, inviteOnly, name, setName, code, setCode, emailRequired = false }) {
   const [email, setEmail] = useState('')
   const [pw, setPw] = useState('')
   const [again, setAgain] = useState('')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState(null)
+  const [noSub, setNoSub] = useState(false)   // the refusal that sends people to support
   const submit = async ev => {
     ev.preventDefault()
     if (busy) return
     const n = name.trim()
     const mail = email.trim()
     const bad = !n ? t('Enter a name')
+      : emailRequired && !mail ? t('Enter the e-mail used in the purchase.')
       : mail && !looksLikeEmail(mail) ? t('That is not an e-mail address.')
       : inviteOnly && !code.trim() ? t('An invite code is required')
       : length(pw) < MIN_PASSWORD ? t('Use at least {0} characters.', MIN_PASSWORD)
       : pw !== again ? t('The two passwords are not the same.')
       : null
     if (bad) { setErr(bad); return }
-    setBusy(true); setErr(null)
+    setBusy(true); setErr(null); setNoSub(false)
     try {
       const u = await passwordRegister(n, pw, code.trim(), mail)
       const st = useStore.getState()
       st.setUser(u); close()
       if (hasData(useStore.getState().S)) { await st.pushState(); toast(t('Profile created, and this device’s data moved into it')) }
       else { await st.pullState(); toast(t('Welcome, {0}', u.name)) }
-    } catch (e) { setErr(passwordError(e)) }
+    } catch (e) { setErr(passwordError(e)); setNoSub(e?.data?.code === 'no-subscription') }
     finally { setBusy(false) }
   }
   return <form onSubmit={submit} noValidate>
     <input className="input" name="username" autoComplete="username" placeholder={t('Your name')} maxLength={40}
       value={name} onChange={e => setName(e.target.value)} {...field} />
     <div style={{ height: 10 }} />
-    <input className="input" type="email" name="email" autoComplete="email" inputMode="email" placeholder={t('E-mail (optional)')} maxLength={254}
+    <input className="input" type="email" name="email" autoComplete="email" inputMode="email" placeholder={emailRequired ? t('Purchase e-mail') : t('E-mail (optional)')} maxLength={254}
       value={email} onChange={e => setEmail(e.target.value)} {...field} />
-    <div className="dim small" style={{ marginTop: 6 }}>{t('Lets you sign in with it instead of your name. Nothing is ever sent to it.')}</div>
+    <div className="dim small" style={{ marginTop: 6 }}>{emailRequired
+      ? t('Use the same e-mail you bought with. It is what unlocks your access.')
+      : t('Lets you sign in with it instead of your name. Nothing is ever sent to it.')}</div>
     {inviteOnly && <>
       <div style={{ height: 10 }} />
       <input className="input" placeholder={t('Invite code')} maxLength={40} value={code}
@@ -203,6 +212,7 @@ export function PasswordRegisterForm({ close, inviteOnly, name, setName, code, s
       value={again} onChange={e => setAgain(e.target.value)} />
     <div className="dim small" style={{ marginTop: 6 }}>{t('At least {0} characters. A few unrelated words make a good one.', MIN_PASSWORD)}</div>
     {err && <div className="small" role="alert" style={errStyle}>{err}</div>}
+    {noSub && <div className="dim small" style={{ marginTop: 6 }}><SupportLine /></div>}
     <div style={{ height: 12 }} />
     <Button type="submit" variant="primary" disabled={busy}>{t('Create profile')}</Button>
   </form>
@@ -216,7 +226,7 @@ function PasswordRegisterSheet({ close }) {
   return <>
     <h3>{t('Create your profile')}</h3>
     <div className="muted small" style={{ marginBottom: 14 }}>{t('Pick a name and a password. You sign in with both.')}</div>
-    <PasswordRegisterForm close={close} inviteOnly={!!config?.invite_only} name={name} setName={setName} code={code} setCode={setCode} />
+    <PasswordRegisterForm close={close} inviteOnly={!!config?.invite_only} emailRequired={subscriptionOn(config)} name={name} setName={setName} code={code} setCode={setCode} />
   </>
 }
 export const openPasswordRegister = () => ui().openSheet(close => <PasswordRegisterSheet close={close} />)

@@ -728,6 +728,9 @@ export const useStore = create((set, get) => {
     // never ran or did not get through (no server, a pairing that failed on the way to it) runs it
     // here, question and all; one already running is left to answer.
     if (adoptHold) { if (!adopting && adoptOwed()) get().resumeAdoption(); return }
+    // Blocked by a lapsed subscription: the one cheap question worth asking is whether it is back
+    // (a renewal made elsewhere); no document is fetched or pushed meanwhile.
+    if (get().blocked) return get().recheckAccess()
     if (pulling) return pulling
     const { base } = metaOf()
     if (!base || owes()) return get().pullState()
@@ -841,6 +844,14 @@ export const useStore = create((set, get) => {
       // Whatever went wrong — no network, a refused token, a phone without a pairing, a server
       // error — the copy stays owed to the server and the next check retries it.
       markOwed(true)
+      // Paid access lapsed (402): not a failure to retry. The copy stays here and stays owed, the
+      // profile is marked blocked and pushState stops sending until recheckAccess (or a reload)
+      // finds the right back. Nothing is wiped, and the poll goes on only with its cheap reads.
+      if (e?.status === 402 && (e.code === 'subscription-inactive' || e.data?.code === 'subscription-inactive')) {
+        failed(e, { pending: true })
+        set({ blocked: true })
+        return
+      }
       if (isNetworkError(e)) offlineChanges = true
       failed(e, { pending: true })
       // A 413 comes from the proxy in front of the API (nginx: client_max_body_size), which
@@ -1398,6 +1409,27 @@ export const useStore = create((set, get) => {
     ready: false,
     // The connection as the screens show it — see statusOf above for every field.
     sync: sync0,
+    /* Paid access (ACCESS_MODE): the profile's subscription is not active, so the app shows the
+       "inactive subscription" screen instead of the training screens. Set by the session
+       (`access.active === false`, setUser) and by a 402 on the push (doPush). While it is on,
+       nothing is pushed; the local copy and what it owes stay as they are. */
+    blocked: !!user0 && user0.access?.active === false,
+    /* "I already renewed": ask the server who this session is now. Active again → the block goes,
+       and the copy is synced (what was owed is sent). Returns whether the profile is let in. A
+       failed check (offline) leaves everything as it was. */
+    async recheckAccess() {
+      const me0 = get().user
+      if (!me0) return false
+      try {
+        const me = await api('/api/me')
+        if (!me?.user?.id || me.user.id !== me0.id) return false
+        get().setUser(me.user)
+      } catch { return false }
+      if (get().blocked) return false
+      get().refreshConfig()
+      await get().pullState()
+      return true
+    },
     /* Instance capabilities from GET /api/config. `config.coach` is present only when the owner
        has both enabled the Coach and connected a provider — every Coach entry point in the app
        hangs off it via coachAvailable(), so an unconfigured instance renders exactly what it
@@ -1731,7 +1763,9 @@ export const useStore = create((set, get) => {
         // session and is already the right answer, Coach or no Coach.
         if (get().config && !('coach' in get().config)) get().refreshConfig()
       } else { rejoined = false; adoptHold = false; localStorage.removeItem('gym_user') }
-      set({ user: u })
+      // Paid access: the session says whether the profile's right is active (`access`, only on an
+      // instance with ACCESS_MODE). A session without that key is never blocked.
+      set({ user: u, blocked: !!u && u.access?.active === false })
       setSync({ held: adoptHold })
     },
 
@@ -1740,6 +1774,7 @@ export const useStore = create((set, get) => {
     // before signing out knows the last change is on the server.
     async pushState() {
       if (!get().user) return
+      if (get().blocked) return   // the subscription is not active: a write would only be refused again (see doPush)
       if (sandbox) { sandbox.owesPush = true; return }
       clearTimeout(pushTm)
       pushTm = null

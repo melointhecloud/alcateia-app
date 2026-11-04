@@ -2454,6 +2454,17 @@ export const PT_BR_OVERRIDES = {
   "Nutrition": "Alimentação",
   "Meal plan and recipes": "Plano alimentar e receitas",
   "Coming soon": "Em breve",
+  "Subscription inactive": "Assinatura inativa",
+  "Your subscription is not active, so the app is paused. Your data is saved and comes back as soon as you renew.": "Sua assinatura não está ativa, então o app está em pausa. Seus dados estão guardados e voltam assim que você renovar.",
+  "Renew my subscription": "Renovar minha assinatura",
+  "Need help? Write to {0}.": "Precisa de ajuda? Escreva para {0}.",
+  "I already renewed, check again": "Já renovei, verificar de novo",
+  "Still not active. If you just paid, it can take a few minutes.": "Ainda não está ativa. Se você acabou de pagar, pode levar alguns minutos.",
+  "Purchase e-mail": "E-mail da compra",
+  "Use the same e-mail you bought with. It is what unlocks your access.": "Use o mesmo e-mail da compra. É ele que libera o seu acesso.",
+  "Enter the e-mail used in the purchase.": "Informe o e-mail usado na compra.",
+  "We could not find an active subscription for this e-mail. Check the e-mail used in the purchase.": "Não encontramos uma assinatura ativa para este e-mail. Confira o e-mail usado na compra.",
+  "I already bought, create my account": "Já comprei, criar minha conta",
 }
 
 export default { ...pt, ...PT_BR_OVERRIDES }

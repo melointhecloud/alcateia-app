@@ -100,10 +100,23 @@ async function exchange(url, init) {
   try { data = await r.json() } catch { parsed = false }
   const body = parsed && data && typeof data === 'object' ? data : null
   // The body rides along on the error: a 409 from /api/data carries the server's document.
-  if (!r.ok) { const e = new Error(refusal(r.status, body)); e.status = r.status; e.data = body || {}; throw e }
+  if (!r.ok) {
+    const e = new Error(refusal(r.status, body)); e.status = r.status; e.data = body || {}
+    // Paid access (ACCESS_MODE): the profile's right has lapsed. The code, and the link the server
+    // sends along to renew, ride on the error so the store can stop writing and say so (below).
+    if (r.status === 402 && body && body.code === 'subscription-inactive') {
+      e.code = 'subscription-inactive'
+      if (typeof body.renewUrl === 'string') e.renewUrl = body.renewUrl
+    }
+    throw e
+  }
   if (!body) throw failure(t('The server answered with something other than Alcateia data.'), 'bad-response', r.status)
   return body
 }
+
+// Whether an error is the server saying "this profile's subscription is not active" (402 on
+// PUT /api/data). Reads the body too, since callers build such errors by hand.
+export const isSubscriptionInactive = e => !!e && e.status === 402 && (e.code === 'subscription-inactive' || e.data?.code === 'subscription-inactive')
 
 // A "left" signal sent as the page goes: sendBeacon outlives a closing tab, where fetch may not.
 // Only the web app sends one, to its own origin with its session cookie. A beacon carries no

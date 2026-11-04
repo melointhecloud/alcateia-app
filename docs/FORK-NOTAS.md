@@ -482,3 +482,39 @@ formulário para criar ou ajustar. Testes: `Admin.access.test.jsx` (8) e 1 caso 
 - `lib/audit.js`: rótulos para `admin.entitlement.set` e `hook.cakto.denied`, e motivos para `no-subscription` e os códigos de
   recusa do webhook. Dois testes de `audit.test.js` já estavam vermelhos desde a D3 (a lista de eventos do servidor ganhou
   eventos sem rótulo); ficam verdes aqui.
+
+## D6: cadastro com o e-mail da compra e tela de assinatura inativa
+
+Testes novos: `Blocked.test.jsx` (8), `useStore.access.test.jsx` (9), 9 casos em `Login.password.test.jsx`, 2 em `api.test.js`.
+Suíte do frontend inteira verde (8239), API 908. 11 chaves novas nos 19 packs (no pt-BR entram em `PT_BR_OVERRIDES`; o fingerprint de
+herança do pt muda só porque o pt ganhou as 11). Onde nos afastamos do plano:
+
+- **Cadastro** (`PasswordRegisterForm`, `Login.jsx`): com `config.access_mode === 'subscription'` o e-mail vira obrigatório
+  ("E-mail da compra", texto de apoio, erro "Informe o e-mail usado na compra."). O `403 no-subscription` mostra a mensagem
+  amigável do enunciado (`passwordError`) e, só nesse caso, a linha "Precisa de ajuda? Escreva para suporte@..." (`SupportLine.jsx`).
+  O botão "Criar novo perfil" vira "Já comprei, criar minha conta" no modo. Fora do modo, nada muda (e-mail opcional).
+- **Passkey no modo ligado**: com `password_login` ligado, só a senha é oferecida (sem o seletor Chave de acesso/Senha), porque
+  a passkey precisa de convite no servidor e não recolhe o e-mail da compra; a pessoa pode cadastrar uma passkey depois, em
+  Configurações. Se o servidor não tem senha, o caminho da passkey continua e **sempre pede o código de convite** (mesmo com
+  `INVITE_ONLY=0`), já que o servidor o exige.
+- **`/#/login?cadastro=1`**: lido direto de `window.location` (o Login não usa router, e os testes dele montam sem um). Abre o
+  cadastro por senha sozinho quando a config chega; uma vez só por montagem.
+- **Bloqueio** (`views/Blocked.jsx`, `App.jsx`): `store.blocked` liga com `access.active === false` na sessão (`setUser`, e o
+  valor salvo em `gym_user` no começo) ou com um 402 `subscription-inactive` no `PUT /api/data` (`api.js` põe `code` e `renewUrl`
+  no erro; `isSubscriptionInactive`). A tela substitui as rotas, e some a barra de abas, o banner de sincronização, o quiz, o
+  tour e a camada sazonal. Botão "Renovar" só com `config.renew_url` http(s) (o plano dizia `access.renewUrl`, que o servidor
+  não manda); sem ele, o e-mail de suporte. A tela acrescenta "Já renovei, verificar de novo" (não estava no plano).
+- **Sem laço de requisições e sem perder estado**: com `blocked`, `pushState` não faz mais PUT (um 402 só). O estado local e o
+  "devido ao servidor" ficam como estavam (nada é apagado). A cada rodada do poll (`checkRev`), em vez de buscar o documento, só
+  pergunta `GET /api/me` (`recheckAccess`): se voltou ativo, desbloqueia e sincroniza o que estava pendente. Verificado no
+  navegador: 1 PUT com 402, depois só `/api/me`; renovação → `/api/me` + `/api/data` + 1 PUT 200 com a edição feita durante o bloqueio.
+- **Sair** na tela bloqueada usa `signOut({ force: true })`: o push não pode ir, então a cópia pendente fica guardada neste
+  aparelho (stash) e volta quando a mesma conta entrar de novo, em vez de a saída recusar.
+- O 402 em outra rota não bloqueia (hoje só o `PUT /api/data` responde 402).
+- `Admin.jsx` (D5): a validade na lista agora mostra o ano (`fmtDate(..., true)`).
+
+Achados da verificação no navegador (ACCESS_MODE ligado, RENEW_URL definido):
+- **O primeiro admin não pode ser criado com `ACCESS_MODE` ligado**: o cadastro sem direito dá 403, mesmo com `FIRST_USER_ADMIN=1`.
+  Para um servidor novo, crie o dono com o modo desligado e ligue depois (a D7 já precisa disso para os perfis antigos).
+- `node scripts/build-api-docs.mjs` (citado no plano) não existe neste fork; a conferência do OpenAPI é o
+  `openapi-routes.test.js` dentro de `api npm test`, que passa.

@@ -84,6 +84,37 @@ describe('api() refuses an answer that is not the server\'s', () => {
   })
 })
 
+// Paid access (ACCESS_MODE): PUT /api/data answers 402 with code 'subscription-inactive' when the
+// profile's right has lapsed. The error carries that code (and the renewal link) so the store can
+// stop pushing and show the "inactive subscription" screen instead of retrying a write that
+// cannot succeed.
+describe('api() and a lapsed subscription (402)', () => {
+  afterEach(() => { vi.unstubAllGlobals() })
+  const body = { error: 'subscription inactive', code: 'subscription-inactive', renewUrl: 'https://pay.example/renew' }
+
+  it('the 402 error carries the server code, the status and the renewal link', async () => {
+    const { api, isSubscriptionInactive } = await import('./api.js')
+    vi.stubGlobal('fetch', async () => new Response(JSON.stringify(body), { status: 402, headers: { 'content-type': 'application/json' } }))
+    const err = await api('/api/data', { method: 'PUT', body: '{}' }).then(() => null, e => e)
+    expect(err).toMatchObject({ status: 402, code: 'subscription-inactive', renewUrl: 'https://pay.example/renew', data: body })
+    expect(isSubscriptionInactive(err)).toBe(true)
+  })
+
+  it('only that 402 counts: another 402, another status or a plain error do not', async () => {
+    const { api, isSubscriptionInactive } = await import('./api.js')
+    vi.stubGlobal('fetch', async () => new Response(JSON.stringify({ error: 'pay up' }), { status: 402, headers: { 'content-type': 'application/json' } }))
+    const other = await api('/api/x').then(() => null, e => e)
+    expect(other.status).toBe(402)
+    expect(other.code).toBeUndefined()
+    expect(isSubscriptionInactive(other)).toBe(false)
+    expect(isSubscriptionInactive({ status: 403, data: { code: 'subscription-inactive' } })).toBe(false)
+    expect(isSubscriptionInactive(null)).toBe(false)
+    expect(isSubscriptionInactive(new Error('x'))).toBe(false)
+    // a store test builds its errors by hand, with the code only in `data`
+    expect(isSubscriptionInactive({ status: 402, data: { code: 'subscription-inactive' } })).toBe(true)
+  })
+})
+
 // A request that never answers used to hold every later push and pull behind it, silently, for
 // as long as the socket hung. It gives up instead — with no status, so it reads as offline.
 describe('api() gives up on a request that never answers', () => {
