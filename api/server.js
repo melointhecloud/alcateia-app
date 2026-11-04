@@ -39,6 +39,8 @@ import { effectiveRoutineId } from './queue.js';
 import { stampPut } from './sync-stamps.js';
 import { atomicWrite as durableWrite } from './durable.js';
 import { ipv6Groups, guardedLookup, pushEndpointError, MAX_PUSH_ENDPOINT } from './net-guard.js';
+import { ingest, hasAccess, findClaimable, linkUser, grant } from './entitlements.js';
+import { verifyCakto } from './cakto-webhook.js';
 import { createIntegrations } from './integrations/index.js';
 import { integrationRoutes } from './integrations/routes.js';
 import { excusedOn, nudgeFor, nudgeWindowOpen, toneOf } from './nudge.js';
@@ -54,6 +56,40 @@ const RP_NAME = process.env.RP_NAME || 'Alcateia';
 // self-hosted instance stays open.
 const ADMIN_UIDS = (process.env.ADMIN_UIDS || '').split(',').map(s => s.trim()).filter(Boolean);
 const INVITE_ONLY = /^(1|true|yes|on)$/i.test(process.env.INVITE_ONLY || '');
+// Paid access (Cakto; docs/FORK-NOTAS.md D3). Everything below sits behind ACCESS_MODE=subscription:
+// unset (or any other value), the server behaves exactly as the upstream one. Only that exact word
+// turns it on, so a stray ACCESS_MODE=1 can never lock an instance by accident.
+const ACCESS_MODE = /^subscription$/i.test((process.env.ACCESS_MODE || '').trim());
+// Without a secret the webhook route refuses everything (verifyCakto answers `no-secret`).
+const CAKTO_SECRET = process.env.CAKTO_WEBHOOK_SECRET || '';
+// Days of grace after the paid period ends. Unset, empty or not a number: 3 (the spec's default).
+const ACCESS_GRACE_DAYS = (() => {
+  const v = Number(String(process.env.ACCESS_GRACE_DAYS ?? '').trim());
+  return String(process.env.ACCESS_GRACE_DAYS ?? '').trim() !== '' && Number.isFinite(v) && v >= 0 ? v : 3;
+})();
+// Where a lapsed profile is sent to pay again. It ends up in a link, so only http(s) is kept.
+const RENEW_URL = (() => {
+  const v = (process.env.RENEW_URL || '').trim();
+  if (!v) return '';
+  try { if (/^https?:$/.test(new URL(v).protocol)) return v; } catch { /* falls through */ }
+  console.warn('RENEW_URL is not an http(s) address; ignored');
+  return '';
+})();
+// offer.id or product.id -> { plan, days } (entitlements.js planOf). A bad value is not worth a
+// server that will not start: it is ignored, once, and the event's own recurrence period is used.
+const CAKTO_PLANS = (() => {
+  const v = process.env.CAKTO_PLANS;
+  if (!v || !v.trim()) return {};
+  try {
+    const plans = JSON.parse(v);
+    if (plans && typeof plans === 'object' && !Array.isArray(plans)) return plans;
+  } catch { /* falls through */ }
+  console.warn('CAKTO_PLANS is not a JSON object; ignored (the recurrence period of each event is used)');
+  return {};
+})();
+// Cakto's events are a few KB; far less than MAX_BODY is plenty, and the route is open to anyone
+// until its signature has been checked.
+const CAKTO_MAX_BODY = 1024 * 1024;
 // The first profile made on an instance with no profiles at all becomes its admin (#328), so a
 // fresh install has someone who can open the admin dashboard without editing ADMIN_UIDS and
 // restarting. Stored on the user record (user.admin), which isAdmin already honours. It is
@@ -158,6 +194,10 @@ db.creds = db.creds || [];
 db.subs = db.subs || [];
 db.invites = db.invites || [];
 db.deviceLinks = db.deviceLinks || [];   // unused one-time device links, hashed (device-link.js)
+// Access rights (entitlements.js) and the webhook events already applied ("<event>:<data.id>").
+// An older db.json has neither; they are written back with the next save (and into db.json.bak).
+if (!Array.isArray(db.entitlements)) db.entitlements = [];
+if (!Array.isArray(db.caktoSeen)) db.caktoSeen = [];
 const isAdmin = user => !!user && (user.admin === true || ADMIN_UIDS.includes(user.id));
 // One owner per instance, any number of admins. Admins run the place day to day (users, invites,
 // the Coach); the owner is the one admin the others cannot act on: only the owner appoints or
@@ -685,7 +725,13 @@ const clearCookie = COOKIE === LEGACY_COOKIE
 // any site sign a visitor into the attacker's account and collect what they log (login CSRF).
 // The watch relay's two routes for the watch are the same kind: the code in the body, or a watch
 // token in the Authorization header, which no browser attaches on its own.
-const CSRF_EXEMPT = new Set(['POST /api/pair/redeem', 'POST /api/watch/redeem', 'POST /api/watch/box']);
+//
+// POST /api/hooks/cakto is the other: Cakto's servers call it, with no cookie and no Origin, and
+// a browser has no ambient authority there to borrow. The credential is the HMAC signature (or the
+// shared secret) in the request itself, which a hostile page cannot produce; the route sets no
+// cookie and reads no session. Without the exemption a Cakto that sent an Origin header would be
+// answered 403 and, since it does not retry, lose the sale.
+const CSRF_EXEMPT = new Set(['POST /api/pair/redeem', 'POST /api/watch/redeem', 'POST /api/watch/box', 'POST /api/hooks/cakto']);
 // The routes that answer to the credential in the body and never to a Bearer. No Bearer is the
 // credential that acts there, so none buys the shortcut below: any valid token would do, the
 // attacker's own included.
@@ -814,7 +860,9 @@ function json(res, code, obj, extraHeaders) {
 class HttpError extends Error {
   constructor(status, message) { super(message); this.status = status; }
 }
-function readBody(req) {
+// The body's exact bytes, with a size cap. readBody parses them; the Cakto webhook needs them as
+// sent (its signature covers the bytes, and a body that is not JSON must still reach the check).
+function readRaw(req, max = MAX_BODY) {
   return new Promise((resolve, reject) => {
     let size = 0, over = false; const chunks = [];
     req.on('data', d => {
@@ -826,10 +874,10 @@ function readBody(req) {
         // reset before it has parsed the answer reports a dropped connection instead of the
         // 413. A client that keeps streaming past twice the cap is not a mistaken one, and is
         // cut off.
-        if (size > 2 * MAX_BODY) req.destroy();
+        if (size > 2 * max) req.destroy();
         return;
       }
-      if (size > MAX_BODY) {
+      if (size > max) {
         over = true; chunks.length = 0;
         reject(new HttpError(413, 'body too large'));
         return;
@@ -838,29 +886,33 @@ function readBody(req) {
     });
     req.on('end', () => {
       if (over) return;
-      if (!chunks.length) return resolve({});
-      // A body has to say it is JSON. The three types a form can send, and the ones a no-cors
-      // fetch can send, are exactly the ones that need no CORS preflight; parsing them anyway
-      // let another site's form reach any route that reads a body, and on the passkey sign-in
-      // that meant setting the victim's session to an account the attacker holds. Every client
-      // in the tree already sends application/json (lib/api.js, sw.js).
-      if (!/^application\/json\s*(;|$)/i.test(req.headers['content-type'] || '')) {
-        return reject(new HttpError(415, 'content-type must be application/json'));
-      }
-      let body;
-      try { body = JSON.parse(Buffer.concat(chunks).toString('utf8')); }
-      catch { return reject(new HttpError(400, 'invalid json')); }
-      // Every handler reads fields off the result, so a JSON `null`, string, number or array is
-      // as much a client mistake as unparseable text — refused once here rather than dereferenced
-      // (and turned into a TypeError) in each route.
-      if (!body || typeof body !== 'object' || Array.isArray(body)) return reject(new HttpError(400, 'invalid json'));
-      resolve(body);
+      resolve(Buffer.concat(chunks));
     });
     // A browser hanging up mid-body — which is what pagehide does to an in-flight sync — is not
     // the caller getting a request wrong, it is nobody being left to answer. Marked so the
     // catch-all at the bottom says one line instead of a stack trace and a 500 into a dead socket.
     req.on('error', e => reject(Object.assign(e, { clientGone: true })));
   });
+}
+async function readBody(req) {
+  const raw = await readRaw(req);
+  if (!raw.length) return {};
+  // A body has to say it is JSON. The three types a form can send, and the ones a no-cors
+  // fetch can send, are exactly the ones that need no CORS preflight; parsing them anyway
+  // let another site's form reach any route that reads a body, and on the passkey sign-in
+  // that meant setting the victim's session to an account the attacker holds. Every client
+  // in the tree already sends application/json (lib/api.js, sw.js).
+  if (!/^application\/json\s*(;|$)/i.test(req.headers['content-type'] || '')) {
+    throw new HttpError(415, 'content-type must be application/json');
+  }
+  let body;
+  try { body = JSON.parse(raw.toString('utf8')); }
+  catch { throw new HttpError(400, 'invalid json'); }
+  // Every handler reads fields off the result, so a JSON `null`, string, number or array is
+  // as much a client mistake as unparseable text — refused once here rather than dereferenced
+  // (and turned into a TypeError) in each route.
+  if (!body || typeof body !== 'object' || Array.isArray(body)) throw new HttpError(400, 'invalid json');
+  return body;
 }
 // A caller-supplied field that is meant to be text. String() alone is not safe on a parsed body:
 // `{"code":{"toString":1}}` is valid JSON and String() throws on it.
@@ -1191,7 +1243,25 @@ function loginTarget(body) {
 }
 const acctKey = u => 'acct:' + u.id;
 const passkeyCount = u => db.creds.filter(c => c.userId === u.id).length;
-const publicUser = u => ({ id: u.id, name: u.name, admin: isAdmin(u), ...(isOwner(u) ? { owner: true } : {}) });
+// A profile's right to save: its entitlement, found by the userId the entitlement carries and by
+// nothing else. The profile's own e-mail is no key: Settings does not verify an address, so
+// matching on it would let anyone claim a purchase by typing the buyer's address there.
+// A profile with no entitlement has no access (the admin creates them for old profiles before
+// ACCESS_MODE is switched on, PUT /api/admin/entitlements). Admins are never blocked.
+const entitlementOf = u => db.entitlements.find(e => e && e.userId === u.id) || null;
+function accessOf(u, now = Date.now()) {
+  if (isAdmin(u)) return { active: true, plan: null, validUntil: null };
+  const e = entitlementOf(u);
+  return { active: hasAccess(e, now), plan: e?.plan || null, validUntil: e?.validUntil || null };
+}
+// What the dashboard lists: every right, with the name of the profile it is linked to.
+const entitlementRows = () => db.entitlements.map(e => ({
+  ...e, userName: e.userId ? (db.users.find(u => u.id === e.userId) || {}).name || null : null
+}));
+// Refusals of the Cakto webhook that reach the container log: a few a minute, never a flood.
+const HOOK_WARN = createWindow({ max: 5, windowMs: 60000 });
+const publicUser = u => ({ id: u.id, name: u.name, admin: isAdmin(u), ...(isOwner(u) ? { owner: true } : {}),
+  ...(ACCESS_MODE ? { access: accessOf(u) } : {}) });
 const POLICY_ERRORS = {
   'too-short': `the password needs at least ${MIN_LENGTH} characters`,
   'too-long': `the password can have at most ${MAX_LENGTH} characters`,
@@ -1405,8 +1475,11 @@ const passwordRoutes = {
     if (!name) return json(res, 400, { error: 'name required', code: 'missing' });
     const code = text(body.code).trim().toUpperCase();
     const invite = () => db.invites.find(i => i.code === code && !i.usedBy && !i.revoked);
-    if (INVITE_ONLY && addressPaused(req, res, 'signup')) return;
-    if (INVITE_ONLY && !invite()) {
+    // With ACCESS_MODE the door is the purchase (below), not INVITE_ONLY: that variable can stay
+    // on from before, and an invite is then only the way in for the manual cases.
+    const inviteGate = INVITE_ONLY && !ACCESS_MODE;
+    if (inviteGate && addressPaused(req, res, 'signup')) return;
+    if (inviteGate && !invite()) {
       audit(req, 'auth.register.denied', { ok: false, name, msg: 'invite-rejected' });
       strikeAddress(req, 'signup');
       return json(res, 403, { error: 'a valid invite code is required', code: 'invite' });
@@ -1428,6 +1501,21 @@ const passwordRoutes = {
     const hasEmail = typeof body.email === 'string' && body.email.trim() !== '';
     const email = hasEmail ? normalizeEmail(body.email) : null;
     if (hasEmail && !email) return json(res, 400, EMAIL_ERRORS.invalid);
+    // The same answer, status and body, for an address with no purchase, with a lapsed one, with
+    // one already used and for a wrong invite, so the form cannot be used to find out who is a
+    // subscriber. Each one counts against the caller's address (the 'signup' pause).
+    const noSubscription = () => {
+      strikeAddress(req, 'signup');
+      audit(req, 'auth.register.denied', { ok: false, name, msg: 'no-subscription' });
+      return json(res, 403, { error: 'não encontramos uma assinatura ativa para este e-mail', code: 'no-subscription' });
+    };
+    // Paid access: sign up only with an active, unclaimed right for this e-mail, or with a valid
+    // invite (manual cases). Asked now to refuse early, and asked again after the hash.
+    if (ACCESS_MODE) {
+      if (!email) return json(res, 400, { error: 'e-mail required', code: 'email' });
+      if (addressPaused(req, res, 'signup')) return;
+      if (!findClaimable(db.entitlements, email) && !invite()) return noSubscription();
+    }
     const emailRefused = () => {
       strikeAddress(req, 'email');
       audit(req, 'auth.register.fail', { ok: false, name, msg: 'email-taken' });
@@ -1436,11 +1524,23 @@ const passwordRoutes = {
     if (email && addressPaused(req, res, 'email')) return;
     const h = await hashPassword(body.password);
     let inv = null;
-    if (INVITE_ONLY) {
+    if (inviteGate) {
       inv = invite();
       if (!inv) {
         audit(req, 'auth.register.fail', { ok: false, name, msg: 'invite-invalid' });
         return json(res, 403, { error: 'invite code is no longer valid, ask for a new one', code: 'invite' });
+      }
+    }
+    // The hash above was an await, in which a second sign-up with the same address may have
+    // claimed the right: so it is looked up again here. This is the check that counts, and there is
+    // no await between it and the push below. The right wins over the invite, which is burned only
+    // when it is what lets this person in.
+    let claim = null;
+    if (ACCESS_MODE) {
+      claim = findClaimable(db.entitlements, email);
+      if (!claim) {
+        inv = invite();
+        if (!inv) return noSubscription();
       }
     }
     if (nameTaken(name)) {
@@ -1449,14 +1549,17 @@ const passwordRoutes = {
       return taken();
     }
     // No await from here to the push: nothing can take the address between this check and it.
-    if (email && emailTaken(email)) return emailRefused();
+    // With ACCESS_MODE and a purchase, "in use" is answered like "no purchase" (see noSubscription).
+    if (email && emailTaken(email)) return ACCESS_MODE && claim ? noSubscription() : emailRefused();
     const created = new Date().toISOString();
     const user = { id: crypto.randomBytes(12).toString('base64url'), name, created, pw: { h, set: created }, ...(email ? { email } : {}) };
     if (inv) { user.invitedBy = inv.code; inv.usedBy = user.id; inv.usedAt = created; }
     claimFirstAdmin(req, user);
     db.users.push(user);
+    // The right now belongs to this profile (same tick as the check, so no second profile can take it).
+    if (claim) db.entitlements = linkUser(db.entitlements, email, user.id).entitlements;
     saveDb();
-    audit(req, 'auth.register.ok', { user, msg: inv ? inv.code + ' · password' : 'password' });
+    audit(req, 'auth.register.ok', { user, msg: inv ? inv.code + ' · password' : claim ? 'subscription · password' : 'password' });
     json(res, 200, { user: publicUser(user) }, { 'Set-Cookie': sessionCookie(user) });
   },
 
@@ -2105,6 +2208,9 @@ const routes = {
     // that has no Coach. The key's absence is that answer.
     json(res, 200, {
       invite_only: INVITE_ONLY, allow_guest: ALLOW_GUEST,
+      // Only when on (like password_login), so an instance without it answers as it always did.
+      // Public: the sign-in and "inactive subscription" screens read them. Neither is a secret.
+      ...(ACCESS_MODE ? { access_mode: 'subscription', ...(RENEW_URL ? { renew_url: RENEW_URL } : {}) } : {}),
       // Only when on, so an instance without passwords answers exactly as it did before (#118).
       ...(PASSWORD_LOGIN ? { password_login: true } : {}),
       // Public: the sign-in screen is the first thing that reads it.
@@ -2139,7 +2245,7 @@ const routes = {
     const name = text(body.name).trim().slice(0, 40);
     if (!name) return json(res, 400, { error: 'name required' });
     const code = text(body.code).trim().toUpperCase();
-    if (INVITE_ONLY && !db.invites.some(i => i.code === code && !i.usedBy && !i.revoked)) {
+    if ((INVITE_ONLY || ACCESS_MODE) && !db.invites.some(i => i.code === code && !i.usedBy && !i.revoked)) {
       // The rejected code itself is never recorded — a near-miss guess in the log is a liability.
       audit(req, 'auth.register.denied', { ok: false, name, msg: 'invite-rejected' });
       return json(res, 403, { error: 'a valid invite code is required', code: 'invite' });
@@ -2188,7 +2294,9 @@ const routes = {
     }
     // Re-check the invite at the last moment (it may have been used/revoked since options), then burn it.
     let invite = null;
-    if (INVITE_ONLY) {
+    // With ACCESS_MODE a passkey profile is still an invite's (the manual cases): the purchase
+    // sign-up is the password route, because it is the one that carries the e-mail.
+    if (INVITE_ONLY || ACCESS_MODE) {
       invite = db.invites.find(i => i.code === c.code && !i.usedBy && !i.revoked);
       if (!invite) {
         audit(req, 'auth.register.fail', { ok: false, name: c.name, msg: 'invite-invalid' });
@@ -2529,6 +2637,11 @@ const routes = {
   'PUT /api/data': async (req, res) => {
     const user = readSession(req);
     if (!user) return json(res, 401, { error: 'not signed in' });
+    // Reading stays open (GET /api/data): the data of a lapsed profile is kept and shown, it just
+    // cannot be changed until the subscription is back.
+    if (ACCESS_MODE && !accessOf(user).active) {
+      return json(res, 402, { error: 'subscription inactive', code: 'subscription-inactive', renewUrl: RENEW_URL || null });
+    }
     const body = await readBody(req);
     if (!body.state || typeof body.state !== 'object') return json(res, 400, { error: 'state required' });
     // An object with nothing of the profile in it empties the document with the counter left
@@ -2756,6 +2869,47 @@ const routes = {
     json(res, 200, { ok: true });
   },
 
+  /* ---------- Cakto (paid access) ---------- */
+  // The seller's payment events (docs.cakto.com.br/conceitos/webhooks). Called by Cakto's servers,
+  // never by the app: no cookie, no Origin (CSRF_EXEMPT above); the HMAC signature, or the shared
+  // secret in the body, is the whole credential. Only with ACCESS_MODE on; without
+  // CAKTO_WEBHOOK_SECRET every request is a 401.
+  //
+  // Answers: 401 when the proof fails, and 200 to every authentic event, including the repeated,
+  // the ignored and the malformed ones. Cakto does not resend after an error answer and allows 8 s,
+  // so a content problem must never become a 4xx/5xx, and the work is done here, in memory plus
+  // one saveDb, before answering. What is logged is the event name, the order id and the outcome:
+  // never the body, an address or the secret.
+  'POST /api/hooks/cakto': async (req, res) => {
+    if (!ACCESS_MODE) return json(res, 404, { error: 'not found' });
+    const raw = await readRaw(req, CAKTO_MAX_BODY);
+    const v = verifyCakto({ rawBody: raw, headers: req.headers, secret: CAKTO_SECRET });
+    if (!v.ok) {
+      // Anyone can send this; a few lines a minute are enough to see a misconfigured secret.
+      if (!HOOK_WARN.take('denied')) console.warn('cakto webhook refused:', v.why);
+      auditFail(req, 'hook.cakto.denied', { ok: false, msg: v.why });
+      return json(res, 401, { error: 'unauthorized' });
+    }
+    // From here the sender is Cakto: whatever is wrong with the content is ours to log, not theirs to retry.
+    let payload = null;
+    try { payload = JSON.parse(raw.toString('utf8')); } catch { /* ingest ignores a payload that is not an object */ }
+    const tag = x => (typeof x === 'string' || typeof x === 'number' ? String(x).replace(/[^\w.:-]/g, '?').slice(0, 40) : '-');
+    try {
+      const r = ingest(db, payload, { graceDays: ACCESS_GRACE_DAYS, plans: CAKTO_PLANS });
+      if (r.changed) {
+        // In memory first: if the disk write fails, the next save carries it.
+        db.entitlements = r.entitlements;
+        db.caktoSeen = r.caktoSeen;
+        saveDb();
+      }
+      const ids = (r.results || []).map(x => `${tag(x.id)}=${x.applied ? 'applied' : x.reason}`).join(',') || r.reason;
+      console.log('cakto', tag(payload?.event), ids || '-');
+    } catch (e) {
+      console.error('cakto webhook failed while processing', tag(payload?.event), e?.message || e);
+    }
+    json(res, 200, { ok: true });
+  },
+
   /* ---------- admin dashboard ---------- */
   // One row per user, cheap enough for a personal instance (reads each state file once).
   'GET /api/admin/users': async (req, res) => {
@@ -2930,6 +3084,53 @@ const routes = {
     saveDb();
     audit(req, 'admin.invite.revoke', { user: admin, msg: inv.code });
     json(res, 200, { ok: true });
+  },
+
+  // Access rights, for the dashboard's "Acessos" section. Available whether or not ACCESS_MODE is
+  // on, on purpose: the old profiles get their manual right before the mode is switched on.
+  'GET /api/admin/entitlements': async (req, res) => {
+    if (!requireAdmin(req, res)) return;
+    json(res, 200, { entitlements: entitlementRows(), access_mode: ACCESS_MODE, grace_days: ACCESS_GRACE_DAYS });
+  },
+
+  // Create or adjust the right of one e-mail (plan, validity, status; may shorten or switch off).
+  // `userId` links the right to a profile that already exists; without it, the profile whose
+  // e-mail equals this one is linked, if there is one. A profile carries at most one right.
+  'PUT /api/admin/entitlements': async (req, res) => {
+    const admin = requireAdmin(req, res); if (!admin) return;
+    const body = await readBody(req);
+    let list;
+    try {
+      list = grant(db.entitlements, {
+        email: text(body.email),
+        plan: body.plan == null || body.plan === '' ? undefined : text(body.plan),
+        validUntil: text(body.validUntil),
+        status: body.status == null || body.status === '' ? undefined : text(body.status)
+      });
+    } catch (e) { return json(res, 400, { error: e.message }); }
+    const email = normalizeEmail(body.email);
+    const row = list.find(e => e.email === email);
+    const asked = text(body.userId).trim();
+    let target = null;
+    if (asked) {
+      target = db.users.find(u => u.id === asked);
+      if (!target) return json(res, 400, { error: 'no such user' });
+    } else if (!row.userId) {
+      target = db.users.find(u => u.email === email) || null;
+    }
+    if (target && row.userId !== target.id) {
+      if (row.userId) return json(res, 409, { error: 'this right already belongs to another profile' });
+      if (list.some(e => e.userId === target.id)) {
+        if (asked) return json(res, 409, { error: 'that profile already has a right' });
+        target = null;                                      // implicit link: leave it, nothing else to do
+      }
+    }
+    db.entitlements = target && !row.userId
+      ? list.map(e => (e === row ? { ...e, userId: target.id } : e))
+      : list;
+    saveDb();
+    audit(req, 'admin.entitlement.set', { user: admin, msg: maskEmail(email) });
+    json(res, 200, { entitlements: entitlementRows() });
   },
 
   /* ---------- activity log ---------- */

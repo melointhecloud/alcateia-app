@@ -390,3 +390,72 @@ Pendência para a D7: confirmar o formato da assinatura com um evento real da co
 `X-Cakto-Signature`, prefixo `v1=`, se vem em segundos, se o corpo assinado é exatamente o recebido, e se algum modo envia só
 um dos cabeçalhos, caso em que a regra acima o recusaria). Sem essa confirmação, o `secret` no corpo continua sendo o caminho
 que a documentação garante.
+
+## D3: webhook, cadastro por e-mail, bloqueio 402 e `access` (`api/server.js`)
+
+Tudo atrás de `ACCESS_MODE=subscription` (só esse valor exato liga; `1`/`true` não ligam). Desligado, o servidor é o do
+upstream: a suíte antiga passou sem mudar nenhuma expectativa. Testes: `api/test/server-access.test.js` (36, servidor real
+em processo filho). Suíte da API inteira: 908 verdes. Onde nos afastamos do plano:
+
+- **`POST /api/hooks/cakto`** (CSRF-exempta, só ela): sem cookie, sem Origin, a credencial é a assinatura (HMAC ou `secret`
+  do corpo). O plano respondia **404** sem `CAKTO_WEBHOOK_SECRET`; aqui é **401** sempre (nunca aceita). Com `ACCESS_MODE`
+  desligado a rota é **404** (como se não existisse). O corpo é lido por `readRaw` (bytes exatos, limite de 1 MiB, 413 acima;
+  `readBody` passou a usar o mesmo `readRaw`, comportamento idêntico). O plano punha `req.rawBody` dentro de `readBody`, o que
+  faria JSON malformado ou `Content-Type` diferente virar 400/415 **antes** da conferência; aqui a rota não usa `readBody`:
+  confere a assinatura primeiro e só então faz `JSON.parse` (malformado com assinatura válida = 200). Erro interno ao
+  processar é registrado e ainda responde 200. Se o `saveDb` falhar, o estado já está em memória e o próximo save o leva
+  (a Cakto não reenvia). Log: só `cakto <evento> <id>=<resultado>`; recusas viram no máximo 5 linhas/min no log e uma linha
+  de auditoria limitada (`hook.cakto.denied`, motivo curto de `verifyCakto`). Nunca corpo, e-mail ou segredo.
+- **CSRF**: a rota entrou em `CSRF_EXEMPT` por precisão, não por necessidade (sem `Origin` o `csrfOk` já passava). Se a Cakto
+  um dia mandar `Origin`, não perdemos a venda. Um navegador hostil não ganha nada: sem a assinatura é 401, e a rota não usa
+  sessão nem põe cookie.
+- **Cadastro** (`POST /api/register/password`): com `ACCESS_MODE`, `email` é obrigatório (`400 code:'email'`). Erro único
+  `403 {error:'não encontramos uma assinatura ativa para este e-mail', code:'no-subscription'}` para e-mail sem compra,
+  vencido, reembolsado, já usado e convite errado; cada recusa conta no limitador (`strikeAddress(..., 'signup')`).
+  `INVITE_ONLY` do ambiente deixa de decidir esta rota (pode continuar `1` da Fase 0); o convite vira só a via manual e só é
+  queimado se for ele que dá a entrada (o direito vence quando os dois valem). **Corrida**: há um `await` (o hash) entre a
+  checagem inicial e a gravação, então o direito é procurado **de novo depois do hash** e o `push` do perfil + `linkUser` ficam
+  no mesmo tick, sem `await` no meio (teste com 3 cadastros simultâneos: um 200, dois 403). `e-mail já em uso` por outro
+  perfil também responde o erro neutro (não o 409 `email-taken`) quando há compra.
+- **Cadastro por passkey** (`/api/register/options` e `/verify`) exige convite com `ACCESS_MODE` ligado (plano não tratava):
+  senão qualquer um criaria perfil sem e-mail e sem passar pelo funil; o perfil novo ficaria sem direito de qualquer forma.
+- **Acesso** (`accessOf`/`publicUser`): `access: { active, plan, validUntil }` só com `ACCESS_MODE` (admin: ativo, plan e
+  validUntil nulos). O direito do perfil é achado **só por `entitlement.userId`**. O plano tinha um fallback por `user.email`;
+  foi cortado porque o e-mail de Configurações não é verificado e qualquer um poderia "pegar" uma compra digitando o e-mail do
+  comprador. `renewUrl` não vai em `access` (vai em `/api/config` e no corpo do 402).
+- **402 em `PUT /api/data`**: `{ error:'subscription inactive', code:'subscription-inactive', renewUrl }`; é a única rota que
+  grava o estado (verificado: `atomicWrite(stateFile...)` só ali). `GET /api/data` segue. **Sem direito = inativo**: perfis
+  criados antes de ligar o modo ficam em 402 até ganharem um direito; **não há migração automática**. A D7 tem de criar o direito
+  manual de cada perfil existente (`PUT /api/admin/entitlements`) **antes** de ligar `ACCESS_MODE`.
+- **Rotas de admin** (sem `/grant`, como pediu o enunciado): `GET /api/admin/entitlements` →
+  `{ entitlements:[...com userName], access_mode, grace_days }`; `PUT /api/admin/entitlements` com
+  `{ email, validUntil, plan?, status?, userId? }` → `{ entitlements }`. Erro do `grant` vira 400 com a mensagem; `userId`
+  inexistente 400; perfil que já tem outro direito, ou direito de outro perfil, 409. Sem `userId`, vincula ao perfil cujo
+  `user.email` é igual (ação do admin, por isso é segura) e é assim que a D7 liga perfis antigos. Funcionam com `ACCESS_MODE`
+  desligado, de propósito, para a migração poder ser feita antes de ligar. Auditoria `admin.entitlement.set`, e-mail mascarado.
+- **`GET /api/config`** ganha `access_mode: 'subscription'` e `renew_url` (só se for http/https; outro esquema é ignorado
+  com aviso) apenas com o modo ligado.
+- **Env**: `ACCESS_GRACE_DAYS` vazio ou inválido vale 3; `CAKTO_PLANS` inválido (não JSON ou não objeto) é ignorado com um
+  aviso no boot. Documentadas em `.env.example`, `docs/SELF_HOSTING.md` e `CLAUDE.md`. O compose passa o `.env` inteiro
+  (`env_file`), nada a mudar. `api/Dockerfile` ganhou `entitlements.js` e `cakto-webhook.js` na linha do `COPY` (o
+  `dockerfile-copy.test.js` pega o esquecimento).
+- **`db.json`**: `entitlements` e `caktoSeen` ganham `[]` na carga se faltarem ou tiverem tipo errado; entram no disco no
+  primeiro `saveDb` (e no `.bak`, que é escrito do mesmo texto). Um db antigo só é reescrito ao primeiro evento ou cadastro.
+- **OpenAPI** (a D4 já está feita aqui, porque `openapi-routes.test.js` compara): `/api/hooks/cakto`, `/api/admin/entitlements`
+  (get/put), `access` em `SessionUser`, 402 em `PUT /api/data`, `access_mode`/`renew_url` em `/api/config`, o cadastro por
+  senha, tag `access`, schema `Entitlement`. A D4 só precisa conferir/ajustar.
+
+Pontos para revisão humana:
+- **Pré-cadastro com o e-mail de outra pessoa**: o e-mail não é verificado (não há envio de e-mail na spec §10). Quem souber o
+  e-mail de uma compradora pode se cadastrar antes dela e ficar com o acesso. O erro neutro e o limitador só atrapalham a
+  enumeração, não impedem isso. Mitigações possíveis (fora desta task): código enviado ao e-mail, ou link único na página
+  pós-compra.
+- A recusa neutra volta antes do hash, e a aceitação depois dele: há diferença de tempo entre "tem compra" e "não tem", mas
+  quem testa um e-mail com senha válida e acerta já consumiu o direito, então o canal de tempo não revela nada além disso.
+- Admin lista e-mails dos direitos por inteiro (como já via `email` dos perfis); só admin.
+- Um perfil sem acesso ainda pode usar outras rotas autenticadas que não gravam o estado (mídia, integrações, relógio, pareamento,
+  Coach). Só `PUT /api/data` bloqueia, como a spec §7.3.
+- Eventos de auditoria novos para o painel D5/Admin rotular: `hook.cakto.denied`, `admin.entitlement.set`, e `auth.register.denied`
+  com `msg: 'no-subscription'`.
+- Ordem na D7: webhook só responde com `ACCESS_MODE` ligado, então compras anteriores à virada não entram; ligue o modo
+  antes de apontar a Cakto para a URL.

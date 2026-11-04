@@ -166,6 +166,10 @@ tags:
     description: Live-workout presence heartbeat
   - name: admin
     description: Admin dashboard. Requires an admin session (`ADMIN_UIDS` or `admin:true`)
+  - name: access
+    description: >-
+      Paid access (`ACCESS_MODE=subscription`): the Cakto webhook, the rights it keeps, the
+      402 a lapsed profile gets, and the admin routes that create or adjust a right by hand.
   - name: media
     description: >-
       The photo, GIF or video of a user's own custom exercise, and the photos and videos
@@ -256,6 +260,9 @@ paths:
         The key is always present for a session, `null` included, so a client that
         caches this answer can tell "no Coach on this instance" from "you were not
         signed in when you asked" and knows whether asking again would change it.
+
+        `access_mode` (and `renew_url`, when `RENEW_URL` is set to an http(s) address) are there
+        only when the instance runs with `ACCESS_MODE=subscription`.
       security: []
       responses:
         '200':
@@ -299,6 +306,17 @@ paths:
                       Present (and true) only when the instance runs with
                       PASSWORD_LOGIN=1; the client then offers name-and-password
                       sign-in next to passkeys.
+                  access_mode:
+                    type: string
+                    const: subscription
+                    description: >-
+                      Present only when the instance runs with `ACCESS_MODE=subscription`: signing
+                      up needs a purchase, and a profile without an active right cannot save (402).
+                  renew_url:
+                    type: string
+                    description: >-
+                      Where a lapsed profile pays again (`RENEW_URL`). Only with `access_mode`, and
+                      only when set.
                   default_lang:
                     type: string
                     example: pt-BR
@@ -1042,6 +1060,15 @@ paths:
         hash and the second invite check, so without a valid code it is never answered,
         which counts against the caller's address like a wrong invite code. **Not**
         CSRF-exempt.
+
+        With `ACCESS_MODE=subscription` the door is the purchase instead of `INVITE_ONLY`:
+        `email` is required (`400 email`), and the profile is created only if the e-mail has
+        an active right nobody has claimed yet, or the request carries a valid invite code
+        (manual cases; the invite is burned only when it is what lets the person in). The
+        profile then stores the e-mail and the right is linked to it. Anything else, whether
+        the address never bought, lapsed, was refunded, or was already used, gets the same
+        `403 no-subscription` with the same body, and counts against the caller's address.
+        Passkey registration (`/api/register/options`) then needs an invite code.
       security: []
       requestBody:
         required: true
@@ -1073,15 +1100,20 @@ paths:
           description: >-
             The password breaks the policy with `too-short` (under 10 characters), `too-long`
             (over 256) or `too-common`; a field is `missing`; or `email-invalid`: the
-            `email` given is not an e-mail address.
+            `email` given is not an e-mail address; or, with `ACCESS_MODE=subscription`,
+            `email`: no e-mail was sent.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
               examples:
                 policy: { value: { error: "this password is too easy to guess", code: "too-common" } }
                 email: { value: { error: "that is not an e-mail address", code: "email-invalid" } }
+                emailRequired: { value: { error: "e-mail required", code: "email" } }
         '403':
-          description: Invite-only and the code is missing, used or revoked.
+          description: >-
+            Invite-only and the code is missing, used or revoked (`invite`); or, with
+            `ACCESS_MODE=subscription`, `no-subscription`: no active, unclaimed right for that
+            e-mail and no valid invite. The answer is the same for every reason.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
@@ -1913,6 +1945,21 @@ paths:
                   wid:
                     type: string
                     description: The write id (`_wid`) of the stored document.
+        '402':
+          description: >-
+            Only with `ACCESS_MODE=subscription`: the profile has no active right (no
+            subscription, expired past the grace period, refunded, paused). Admins are never
+            refused. `GET /api/data` keeps working, so the data of a lapsed profile is kept
+            and shown; saving resumes as soon as the right is active again.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error: { type: string, const: subscription inactive }
+                  code: { type: string, const: subscription-inactive }
+                  renewUrl: { oneOf: [{ type: string }, { type: 'null' }], description: "`RENEW_URL`, when set." }
+              example: { error: "subscription inactive", code: "subscription-inactive", renewUrl: "https://pay.cakto.com.br/xyz" }
         '409':
           description: >-
             `baseRev` is not the current revision: another client wrote since this one
@@ -3032,6 +3079,134 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
 
+  /api/hooks/cakto:
+    post:
+      tags: [access]
+      operationId: caktoWebhook
+      summary: Cakto payment webhook
+      description: |
+        Called by Cakto's servers (docs.cakto.com.br/conceitos/webhooks), not by the app. Only
+        with `ACCESS_MODE=subscription` (a 404 otherwise). **CSRF-exempt, no session**: the
+        proof is in the request itself, checked against the raw bytes of the body before it is
+        parsed. Either `X-Cakto-Timestamp` (seconds, within 5 minutes) with
+        `X-Cakto-Signature: v1=<hex>`, the HMAC-SHA256 of `"<timestamp>.<raw body>"` keyed with
+        `CAKTO_WEBHOOK_SECRET`; or, when neither header is sent, a `secret` field in the JSON
+        body equal to the same key. With no `CAKTO_WEBHOOK_SECRET` configured every request is a
+        401. Body limit 1 MiB.
+
+        An authentic event is always answered `200 {"ok": true}`, whatever it carries: a
+        repeated one (deduplicated by `"<event>:<data.id>"`, last 500 kept), an ignored or
+        unknown one, a body that is not JSON. Cakto does not resend after an error answer, so
+        content never produces a 4xx or 5xx; a failure while processing is logged and still
+        answered 200. `purchase_approved` and `subscription_created` create or activate the
+        right of `data.customer.email`; renewals extend it (never shorten); `refund` and
+        `chargeback` end it at once; `subscription_paused` deactivates it; `subscription_canceled`
+        keeps it to the end of the paid period. The grace period is `ACCESS_GRACE_DAYS`
+        (default 3) and the plan comes from `CAKTO_PLANS` or the event's recurrence period.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                event: { type: string, example: purchase_approved }
+                secret: { type: string, description: Shared secret, when the signature headers are not sent. }
+                data:
+                  description: One order, or an array of them (Webhook V2).
+                  oneOf: [{ type: object }, { type: array, items: { type: object } }]
+      responses:
+        '200':
+          description: The event was authentic (applied, repeated or ignored).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Ok' }
+        '401':
+          description: >-
+            The signature or secret is wrong, stale or missing, or no secret is configured.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: "unauthorized" }
+        '404':
+          description: The instance does not run with `ACCESS_MODE=subscription`.
+        '413':
+          description: Body over 1 MiB.
+
+  /api/admin/entitlements:
+    get:
+      tags: [admin, access]
+      operationId: adminEntitlements
+      summary: 'Admin: list access rights'
+      description: >-
+        Every right (Cakto purchases and manual ones), with the name of the profile each one
+        is linked to. Works whether or not `ACCESS_MODE` is on, so the rights of existing
+        profiles can be created before it is switched on.
+      responses:
+        '200':
+          description: All rights.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  entitlements:
+                    type: array
+                    items: { $ref: '#/components/schemas/Entitlement' }
+                  access_mode: { type: boolean, description: Whether the instance runs with `ACCESS_MODE=subscription`. }
+                  grace_days: { type: number, description: "`ACCESS_GRACE_DAYS`." }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    put:
+      tags: [admin, access]
+      operationId: adminSetEntitlement
+      summary: 'Admin: create or adjust one access right'
+      description: >-
+        Creates or replaces the right of an e-mail: plan, validity and status (it may shorten
+        or switch the right off). The record keeps its linked profile, `createdAt` and
+        subscription id. `userId` links the right to an existing profile; without it, a right
+        that has no profile yet is linked to the profile whose e-mail is the same, if any.
+        A profile carries at most one right. Audited.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, validUntil]
+              properties:
+                email: { type: string }
+                validUntil: { type: string, format: date-time, description: Access lasts until here (grace included). }
+                plan: { type: string, enum: [mensal, trimestral, semestral, manual], description: Default `manual`, or the current plan. }
+                status: { type: string, enum: [active, inactive], description: Default `active`. }
+                userId: { type: string, description: Link to this existing profile. }
+            example: { email: "ana@example.com", plan: manual, validUntil: "2027-03-01T00:00:00Z" }
+      responses:
+        '200':
+          description: Saved. The whole list, as in the GET.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  entitlements:
+                    type: array
+                    items: { $ref: '#/components/schemas/Entitlement' }
+        '400':
+          description: Invalid e-mail, validity, plan or status, or `userId` names no profile.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: "e-mail inválido" }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409':
+          description: The right already belongs to another profile, or that profile already has a right.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
   /api/admin/invites:
     get:
       tags: [admin]
@@ -4095,6 +4270,16 @@ components:
         name: { type: string }
         owner: { type: boolean, description: Present (true) only for the instance owner. }
         admin: { type: boolean }
+        access:
+          type: object
+          description: >-
+            Only with `ACCESS_MODE=subscription`. `active` is false when the profile has no
+            right or it has lapsed (saving answers 402); admins are always active. `plan` and
+            `validUntil` are null without a right.
+          properties:
+            active: { type: boolean }
+            plan: { oneOf: [{ type: string }, { type: 'null' }] }
+            validUntil: { oneOf: [{ type: string }, { type: 'null' }] }
       example: { id: "Zk3q9XyPbA2LmN0v", name: "Ada", admin: false }
 
     # ------------------------------------------------------------------ WebAuthn
@@ -4581,6 +4766,24 @@ components:
           type: array
           description: Full history, newest first.
           items: { $ref: '#/components/schemas/Workout' }
+
+    Entitlement:
+      type: object
+      description: One access right, keyed by e-mail (api/entitlements.js).
+      properties:
+        email: { type: string, description: Lower case, trimmed. }
+        status: { type: string, enum: [active, inactive] }
+        source: { type: string, enum: [cakto, manual] }
+        plan: { type: string, enum: [mensal, trimestral, semestral, manual] }
+        subscriptionId: { oneOf: [{ type: string }, { type: 'null' }] }
+        validUntil: { type: string, description: ISO time access lasts until (grace included). }
+        userId: { oneOf: [{ type: string }, { type: 'null' }], description: The profile it is linked to. }
+        userName: { oneOf: [{ type: string }, { type: 'null' }] }
+        canceled: { type: boolean }
+        lastEvent: { type: string }
+        createdAt: { type: string }
+        updatedAt: { type: string }
+      additionalProperties: true
 
     Invite:
       type: object

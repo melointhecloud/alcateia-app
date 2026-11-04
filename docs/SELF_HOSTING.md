@@ -244,6 +244,11 @@ ALLOW_GUEST=0              # remove "Continue without account"
 FIRST_USER_ADMIN=1         # the first profile on an empty instance becomes its admin
 ```
 
+Paid access (the Alcateia fork, Cakto) has its own switch, `ACCESS_MODE=subscription`, with
+`CAKTO_WEBHOOK_SECRET`, `CAKTO_PLANS`, `ACCESS_GRACE_DAYS` and `RENEW_URL`; all are explained in
+`.env.example` and in `docs/FORK-NOTAS.md` (D3). Off, none of it exists. On, `INVITE_ONLY` no
+longer decides password sign-up (the purchase does), and passkey sign-up needs an invite.
+
 Create your own profile before you switch `INVITE_ONLY` on: with no profile and no admin yet,
 nobody could generate the first code.
 
