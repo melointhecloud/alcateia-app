@@ -159,7 +159,8 @@ export const openPasswordSignIn = onPasskey => ui().openSheet(close => <Password
 
 /* The password half of creating a profile. Name and invite code are the caller's state, so
    switching between passkey and password on the sign-up sheet keeps what was typed. */
-export function PasswordRegisterForm({ close, inviteOnly, name, setName, code, setCode, emailRequired = false }) {
+export function PasswordRegisterForm({ close, inviteOnly, inviteOptional = false, name, setName, code, setCode, emailRequired = false }) {
+  const [codeOpen, setCodeOpen] = useState(false)   // the optional code, folded away until asked for
   const [email, setEmail] = useState('')
   const [pw, setPw] = useState('')
   const [again, setAgain] = useState('')
@@ -204,6 +205,15 @@ export function PasswordRegisterForm({ close, inviteOnly, name, setName, code, s
         onChange={e => setCode(e.target.value.toUpperCase())} style={codeStyle} />
       <div className="dim small" style={{ marginTop: 6 }}>{t('This app is invite-only. Enter the code you were given.')}</div>
     </>}
+    {/* Paid access: the purchase is the door, an invite only the way in for the manual cases. So the
+        field is there for whoever has one, folded away, and never required. */}
+    {!inviteOnly && inviteOptional && (codeOpen || code
+      ? <>
+        <div style={{ height: 10 }} />
+        <input className="input" placeholder={t('Invite code')} maxLength={40} value={code}
+          onChange={e => setCode(e.target.value.toUpperCase())} style={codeStyle} />
+      </>
+      : <Button type="button" variant="ghost" className="dim" onClick={() => setCodeOpen(true)}>{t('I have an invite code')}</Button>)}
     <div style={{ height: 10 }} />
     <input className="input" type="password" name="new-password" autoComplete="new-password" placeholder={t('Password')}
       value={pw} onChange={e => setPw(e.target.value)} />
@@ -226,7 +236,7 @@ function PasswordRegisterSheet({ close }) {
   return <>
     <h3>{t('Create your profile')}</h3>
     <div className="muted small" style={{ marginBottom: 14 }}>{t('Pick a name and a password. You sign in with both.')}</div>
-    <PasswordRegisterForm close={close} inviteOnly={!!config?.invite_only} emailRequired={subscriptionOn(config)} name={name} setName={setName} code={code} setCode={setCode} />
+    <PasswordRegisterForm close={close} inviteOnly={!!config?.invite_only && !subscriptionOn(config)} inviteOptional={subscriptionOn(config)} emailRequired={subscriptionOn(config)} name={name} setName={setName} code={code} setCode={setCode} />
   </>
 }
 export const openPasswordRegister = () => ui().openSheet(close => <PasswordRegisterSheet close={close} />)

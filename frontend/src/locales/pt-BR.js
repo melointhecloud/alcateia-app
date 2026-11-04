@@ -2466,6 +2466,7 @@ export const PT_BR_OVERRIDES = {
   "Enter the e-mail used in the purchase.": "Informe o e-mail usado na compra.",
   "We could not find an active subscription for this e-mail. Check the e-mail used in the purchase.": "Não encontramos uma assinatura ativa para este e-mail. Confira o e-mail usado na compra.",
   "I already bought, create my account": "Já comprei, criar minha conta",
+  "I have an invite code": "Tenho um convite",
 }
 
 export default { ...pt, ...PT_BR_OVERRIDES }

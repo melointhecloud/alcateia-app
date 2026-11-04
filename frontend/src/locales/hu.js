@@ -3662,4 +3662,5 @@ export default {
   "Enter the e-mail used in the purchase.": "Add meg a vásárláskor használt e-mailt.",
   "We could not find an active subscription for this e-mail. Check the e-mail used in the purchase.": "Ehhez az e-mailhez nem találtunk aktív előfizetést. Ellenőrizd a vásárláskor használt e-mailt.",
   "I already bought, create my account": "Már vásároltam, fiók létrehozása",
+  "I have an invite code": "Van meghívókódom",
 }

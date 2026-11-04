@@ -1683,7 +1683,10 @@ function RegisterInline({ close, setUser, pushState, pullState, toast }) {
   const nameRef = useRef(null)
   const [code, setCode] = useState('')
   const [inviteOnly, setInviteOnly] = useState(false)
-  useEffect(() => { api('/api/config').then(c => setInviteOnly(!!c.invite_only)).catch(() => {}) }, [])
+  // With paid access a passkey profile still needs a code (the purchase road is the password form),
+  // but the "invite-only" wording would be false there.
+  const [paid, setPaid] = useState(false)
+  useEffect(() => { api('/api/config').then(c => { setPaid(c.access_mode === 'subscription'); setInviteOnly(!!c.invite_only || c.access_mode === 'subscription') }).catch(() => {}) }, [])
   const go = async () => {
     const n = (nameRef.current.value || '').trim()
     if (!n) { toast(t('Enter a name')); return }
@@ -1702,7 +1705,7 @@ function RegisterInline({ close, setUser, pushState, pullState, toast }) {
       <div style={{ height: 10 }} />
       <input className="input" placeholder={t('Invite code')} maxLength={40} value={code}
         onChange={e => setCode(e.target.value.toUpperCase())} style={{ letterSpacing: '.14em', fontWeight: 600, textAlign: 'center' }} />
-      <div className="dim small" style={{ marginTop: 6 }}>{t('This app is invite-only. Enter the code you were given.')}</div>
+      {!paid && <div className="dim small" style={{ marginTop: 6 }}>{t('This app is invite-only. Enter the code you were given.')}</div>}
     </>}
     <div style={{ height: 12 }} /><Button variant="primary" onClick={go}>{t('Create passkey')}</Button>
   </>

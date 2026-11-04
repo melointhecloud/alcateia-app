@@ -3659,4 +3659,5 @@ export default {
   "Enter the e-mail used in the purchase.": "Satın alırken kullanılan e-postayı gir.",
   "We could not find an active subscription for this e-mail. Check the e-mail used in the purchase.": "Bu e-posta için etkin bir abonelik bulamadık. Satın alırken kullanılan e-postayı kontrol et.",
   "I already bought, create my account": "Zaten satın aldım, hesabımı oluştur",
+  "I have an invite code": "Davet kodum var",
 }

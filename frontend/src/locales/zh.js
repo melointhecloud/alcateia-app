@@ -3659,4 +3659,5 @@ export default {
   "Enter the e-mail used in the purchase.": "请输入购买时使用的邮箱。",
   "We could not find an active subscription for this e-mail. Check the e-mail used in the purchase.": "我们没有找到该邮箱对应的有效订阅。请检查购买时使用的邮箱。",
   "I already bought, create my account": "我已购买，创建我的账号",
+  "I have an invite code": "我有邀请码",
 }

@@ -206,7 +206,7 @@ function UserDetail({ id, viewerOwner, onChanged, close }) {
   </>
 }
 
-function InvitesCard({ invites, reload, inviteOnly }) {
+function InvitesCard({ invites, reload, inviteOnly, paid }) {
   const toast = useUI(s => s.toast)
   const gen = () => api('/api/admin/invites/new', { method: 'POST', body: '{}' })
     .then(({ invite }) => { navigator.clipboard?.writeText(invite.code).catch(() => {}); toast('Code ' + invite.code + ' created & copied'); reload() })
@@ -224,7 +224,9 @@ function InvitesCard({ invites, reload, inviteOnly }) {
     <div className="row between"><h2 style={{ margin: 0 }}>Invite codes</h2>
       <Button variant="primary" size="sm" onClick={gen} icon="plus">New code</Button></div>
     <div className="adm-lead">
-      {inviteOnly
+      {paid
+        ? 'Sign-up is by purchase: an active subscription for the e-mail is what lets someone in. A code is only for the manual cases, to let one person in without a purchase. Each code works once.'
+        : inviteOnly
         ? 'Sign-up is invite-only: someone needs one of these codes to create a profile. Each code works once.'
         : 'Sign-up is open, so codes are optional here. They only record who invited whom.'}
     </div>
@@ -419,6 +421,7 @@ export default function Admin() {
     return () => clearTimeout(tm)
   }, [toCoach])
   const user = useStore(s => s.user)
+  const paid = useStore(s => s.config?.access_mode) === 'subscription'
   const openSheet = useUI(s => s.openSheet)
   const [users, setUsers] = useState(null)
   const [usersErr, setUsersErr] = useState(null)   // why the last load failed, until one succeeds
@@ -490,7 +493,7 @@ export default function Admin() {
 
     <AccessCard tick={tick} />
 
-    <InvitesCard invites={invites} reload={loadInvites} inviteOnly={inviteOnly} />
+    <InvitesCard invites={invites} reload={loadInvites} inviteOnly={inviteOnly} paid={paid} />
 
     <div className="card">
       <h2 style={{ margin: 0 }}>Users</h2>

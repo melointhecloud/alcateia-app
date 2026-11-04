@@ -3652,4 +3652,5 @@ export default {
   "Enter the e-mail used in the purchase.": "請輸入購買時使用的電子郵件。",
   "We could not find an active subscription for this e-mail. Check the e-mail used in the purchase.": "我們找不到此電子郵件對應的有效訂閱。請檢查購買時使用的電子郵件。",
   "I already bought, create my account": "我已購買，建立我的帳號",
+  "I have an invite code": "我有邀請碼",
 }

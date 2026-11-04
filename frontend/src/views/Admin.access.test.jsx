@@ -9,7 +9,7 @@ globalThis.IS_REACT_ACT_ENVIRONMENT = true
 /* The "Access" card of the dashboard (Task D5): the rights the paid-access mode looks at, listed
    with e-mail, plan, status, validity and the profile each is linked to, and a form to grant or
    adjust one by hand (PUT /api/admin/entitlements). The dashboard is English-only on purpose. */
-const mocks = vi.hoisted(() => ({ answers: {}, calls: [], fail: null, toasts: [] }))
+const mocks = vi.hoisted(() => ({ answers: {}, calls: [], fail: null, toasts: [], config: null }))
 vi.mock('../lib/api.js', () => ({
   api: (path, init) => {
     const key = path.split('?')[0]
@@ -20,7 +20,7 @@ vi.mock('../lib/api.js', () => ({
   }
 }))
 vi.mock('../store/useStore.js', () => {
-  const snap = () => ({ user: { id: 'adm', name: 'Admin', admin: true }, S: {} })
+  const snap = () => ({ user: { id: 'adm', name: 'Admin', admin: true }, S: {}, config: mocks.config })
   const useStore = selector => selector ? selector(snap()) : snap()
   useStore.getState = snap
   return { useStore }
@@ -62,7 +62,7 @@ const ROWS = [
 
 beforeEach(() => {
   document.body.innerHTML = ''
-  mocks.calls.length = 0; mocks.toasts.length = 0; mocks.fail = null
+  mocks.calls.length = 0; mocks.toasts.length = 0; mocks.fail = null; mocks.config = null
   mocks.answers = {
     '/api/admin/users': { users: [], invite_only: false },
     '/api/admin/invites': { invites: [] },
@@ -71,6 +71,26 @@ beforeEach(() => {
   }
 })
 afterEach(() => { act(() => { mounted.splice(0).forEach(root => root.unmount()) }) })
+
+const invitesLead = page => [...page.querySelectorAll('.card')].find(c => c.querySelector('h2')?.textContent === 'Invite codes').querySelector('.adm-lead').textContent
+
+describe('Admin "Invite codes" card wording', () => {
+  it('on an invite-only instance it says a code is needed', async () => {
+    mocks.answers['/api/admin/users'] = { users: [], invite_only: true }
+    const page = render(<Admin />)
+    await settle()
+    expect(invitesLead(page)).toContain('Sign-up is invite-only')
+  })
+  it('with paid access it says the purchase is the door, even with INVITE_ONLY left on', async () => {
+    mocks.config = { access_mode: 'subscription', invite_only: true }
+    mocks.answers['/api/admin/users'] = { users: [], invite_only: true }
+    const page = render(<Admin />)
+    await settle()
+    const lead = invitesLead(page)
+    expect(lead).not.toContain('invite-only')
+    expect(lead).toContain('Sign-up is by purchase')
+  })
+})
 
 describe('Admin "Access" card', () => {
   it('lists each right with e-mail, plan, status, validity and the linked profile', async () => {

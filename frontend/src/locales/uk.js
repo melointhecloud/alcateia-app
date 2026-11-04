@@ -3656,4 +3656,5 @@ export default {
   "Enter the e-mail used in the purchase.": "Введіть e-mail, указаний під час покупки.",
   "We could not find an active subscription for this e-mail. Check the e-mail used in the purchase.": "Ми не знайшли активної підписки для цього e-mail. Перевірте e-mail, указаний під час покупки.",
   "I already bought, create my account": "Я вже купив(ла), створити акаунт",
+  "I have an invite code": "У мене є код запрошення",
 }

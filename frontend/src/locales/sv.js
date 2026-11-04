@@ -3706,4 +3706,5 @@ export default {
   "Enter the e-mail used in the purchase.": "Ange e-postadressen som användes vid köpet.",
   "We could not find an active subscription for this e-mail. Check the e-mail used in the purchase.": "Vi hittade ingen aktiv prenumeration för den här e-postadressen. Kontrollera e-postadressen som användes vid köpet.",
   "I already bought, create my account": "Jag har redan köpt, skapa mitt konto",
+  "I have an invite code": "Jag har en inbjudningskod",
 }

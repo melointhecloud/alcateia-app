@@ -3738,4 +3738,5 @@ export default {
   "Enter the e-mail used in the purchase.": "কেনার সময় ব্যবহৃত ইমেইল লিখুন।",
   "We could not find an active subscription for this e-mail. Check the e-mail used in the purchase.": "এই ইমেইলের জন্য কোনো সক্রিয় সাবস্ক্রিপশন পাওয়া যায়নি। কেনার সময় ব্যবহৃত ইমেইল যাচাই করুন।",
   "I already bought, create my account": "আমি আগেই কিনেছি, আমার অ্যাকাউন্ট তৈরি করুন",
+  "I have an invite code": "আমার কাছে আমন্ত্রণ কোড আছে",
 }

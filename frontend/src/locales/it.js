@@ -3659,4 +3659,5 @@ export default {
   "Enter the e-mail used in the purchase.": "Inserisci l’e-mail usata per l’acquisto.",
   "We could not find an active subscription for this e-mail. Check the e-mail used in the purchase.": "Non abbiamo trovato un abbonamento attivo per questa e-mail. Controlla l’e-mail usata per l’acquisto.",
   "I already bought, create my account": "Ho già acquistato, crea il mio account",
+  "I have an invite code": "Ho un codice d’invito",
 }

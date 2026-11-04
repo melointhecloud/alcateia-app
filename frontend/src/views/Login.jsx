@@ -28,13 +28,14 @@ function RegisterSheet({ close, startWith }) {
   const config = useStore(s => s.config)
   const [name, setName] = useState('')
   const [code, setCode] = useState('')
-  const inviteOnly = !!config?.invite_only
+  const sub = subscriptionOn(config)
+  // With paid access the purchase is the door: the server ignores INVITE_ONLY then, so it is not a gate here either.
+  const inviteOnly = !!config?.invite_only && !sub
   // A password is offered only where the instance allows it (#118), and is the only choice in a
   // browser that cannot make a passkey. Where both work, the passkey stays the first one.
   const pwOn = passwordOn(config)
   // Paid access: signing up needs the e-mail of the purchase, which only the password form asks for,
   // and the passkey road needs an invite code on that server. So with both on, only the password is offered.
-  const sub = subscriptionOn(config)
   const passwordOnly = sub && pwOn
   const [howPicked, setHow] = useState(startWith || (webauthnOK() ? 'passkey' : 'password'))
   const how = passwordOnly ? 'password' : howPicked
@@ -64,7 +65,7 @@ function RegisterSheet({ close, startWith }) {
     <h3>{t('Create your profile')}</h3>
     {choose}
     <div className="muted small" style={{ marginBottom: 14 }}>{t('Pick a name and a password. You sign in with both.')}</div>
-    <PasswordRegisterForm close={close} inviteOnly={inviteOnly} emailRequired={sub} name={name} setName={setName} code={code} setCode={setCode} />
+    <PasswordRegisterForm close={close} inviteOnly={inviteOnly} inviteOptional={sub} emailRequired={sub} name={name} setName={setName} code={code} setCode={setCode} />
   </>
   return <>
     <h3>{t('Create your profile')}</h3>
@@ -75,7 +76,7 @@ function RegisterSheet({ close, startWith }) {
       <div style={{ height: 10 }} />
       <input className="input" placeholder={t('Invite code')} maxLength={40} value={code}
         onChange={e => setCode(e.target.value.toUpperCase())} style={{ letterSpacing: '.14em', fontWeight: 600, textAlign: 'center' }} />
-      <div className="dim small" style={{ marginTop: 6 }}>{t('This app is invite-only. Enter the code you were given.')}</div>
+      {!sub && <div className="dim small" style={{ marginTop: 6 }}>{t('This app is invite-only. Enter the code you were given.')}</div>}
     </>}
     <div style={{ height: 12 }} />
     <Button variant="primary" onClick={go}>{t('Create passkey')}</Button>

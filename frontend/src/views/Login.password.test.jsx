@@ -207,6 +207,61 @@ describe('Sign-up with paid access on', () => {
     expect(mocks.sheets).toHaveLength(0)
   })
 
+  // GET /api/config sends invite_only:true next to access_mode:'subscription' when INVITE_ONLY is
+  // still set from before. The server then ignores it (the purchase is the door), so the form must too.
+  describe('with invite_only left on next to the subscription mode', () => {
+    const both = { ...sub, invite_only: true }
+
+    it('does not ask for an invite code, and sends the sign-up without one', async () => {
+      mocks.config = both
+      vi.mocked(passwordRegister).mockResolvedValue({ id: 'u1', name: 'Ana' })
+      const { sheet } = openSheet()
+      expect(sheet.querySelector('input[placeholder="Invite code"]')).toBeNull()
+      expect(sheet.textContent).not.toContain('invite-only')
+      fill(sheet)
+      submit(sheet)
+      await act(() => new Promise(r => setTimeout(r, 0)))
+      expect(sheet.querySelector('[role="alert"]')).toBeNull()
+      expect(passwordRegister).toHaveBeenCalledWith('Ana', 'correct horse battery', '', 'ana@example.com')
+    })
+
+    it('keeps the code as an optional, collapsed extra that is sent when typed', async () => {
+      mocks.config = both
+      vi.mocked(passwordRegister).mockResolvedValue({ id: 'u1', name: 'Ana' })
+      const { sheet } = openSheet()
+      act(() => button(sheet, 'I have an invite code').click())
+      const code = sheet.querySelector('input[placeholder="Invite code"]')
+      expect(code).toBeTruthy()
+      expect(sheet.textContent).not.toContain('invite-only')
+      type(code, 'abc123')
+      fill(sheet)
+      submit(sheet)
+      await act(() => new Promise(r => setTimeout(r, 0)))
+      expect(passwordRegister).toHaveBeenCalledWith('Ana', 'correct horse battery', 'ABC123', 'ana@example.com')
+    })
+
+    it('the plain invite-only instance (no subscription mode) still requires the code', async () => {
+      mocks.config = { password_login: true, invite_only: true }
+      const page = mount(<Login />)
+      act(() => button(page, 'Create new profile').click())
+      const sheet = mount(mocks.sheets[0](() => {}))
+      act(() => button(sheet, 'Password').click())
+      fill(sheet, { email: '' })
+      submit(sheet)
+      expect(sheet.querySelector('[role="alert"]').textContent).toBe('An invite code is required')
+      expect(passwordRegister).not.toHaveBeenCalled()
+    })
+
+    it('/#/login?cadastro=1 opens the sign-up with no invite field either', () => {
+      mocks.config = both
+      window.location.hash = '#/login?cadastro=1'
+      mount(<Login />)
+      const sheet = mount(mocks.sheets[0](() => {}))
+      expect(sheet.querySelector('input[placeholder="Invite code"]')).toBeNull()
+      expect(sheet.textContent).not.toContain('invite-only')
+    })
+  })
+
   it('with no password sign-in on the server, the passkey road asks for the invite code it needs', () => {
     mocks.config = { access_mode: 'subscription' }
     const page = mount(<Login />)
