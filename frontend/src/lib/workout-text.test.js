@@ -103,7 +103,7 @@ describe('workoutText exercise names per language', () => {
   it('keeps German as the pack writes it and title-cases the lower-case packs', () => {
     const expected = {
       de: 'Bankdrücken mit Langhantel', es: 'Press De Banca Con Barra', fr: 'Développé Couché À La Barre',
-      it: 'Panca Piana Con Bilanciere', 'pt-BR': 'Supino Com Barra', ru: 'Жим Штанги Лёжа', hu: 'Fekvenyomás Rúddal',
+      it: 'Panca Piana Con Bilanciere', 'pt-BR': 'Supino Reto com Barra', ru: 'Жим Штанги Лёжа', hu: 'Fekvenyomás Rúddal',
       pl: 'Wyciskanie Sztangi Na Ławce Płaskiej',
     }
     for (const lang of EXERCISE_NAME_LANGS) {
