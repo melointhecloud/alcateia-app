@@ -248,6 +248,105 @@ function InvitesCard({ invites, reload, inviteOnly }) {
   </div>
 }
 
+// Who may use the app while paid access is on (ACCESS_MODE=subscription): one right per e-mail,
+// made by the Cakto webhook or by hand here. A profile is linked to its right when the person
+// signs up with that e-mail, so a right with no profile is a purchase nobody has claimed yet.
+// Granting again for the same e-mail adjusts it (plan, validity, switch off); that is also how
+// an existing profile is let in before the mode is turned on.
+const PLANS = ['mensal', 'trimestral', 'semestral', 'manual']
+const pad2 = n => String(n).padStart(2, '0')
+// The date input reads and writes the browser's calendar day. A right lasts through the end of
+// that day, so a validity picked as the 15th does not stop at midnight UTC on the 14th.
+const dayOf = iso => { const d = new Date(iso); return isNaN(d) ? '' : d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()) }
+const endOfDay = day => { const [y, m, d] = day.split('-').map(Number); return new Date(y, m - 1, d, 23, 59, 59).toISOString() }
+const rightState = (e, now) => e.status !== 'active' ? ['off', 'bad'] : !(Date.parse(e.validUntil) > now) ? ['expired', 'bad'] : ['active', 'ok']
+
+function AccessCard({ tick }) {
+  const toast = useUI(s => s.toast)
+  const [rows, setRows] = useState(null)
+  const [meta, setMeta] = useState({ mode: false, grace: 3 })
+  const [loadErr, setLoadErr] = useState(null)
+  const [email, setEmail] = useState('')
+  const [plan, setPlan] = useState('mensal')
+  const [day, setDay] = useState('')
+  const [status, setStatus] = useState('active')
+  const [editing, setEditing] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState(null)
+
+  const load = () => api('/api/admin/entitlements')
+    .then(d => {
+      if (!Array.isArray(d?.entitlements)) throw new Error('The server answered without a list of rights.')
+      setRows(d.entitlements); setMeta({ mode: !!d.access_mode, grace: d.grace_days }); setLoadErr(null)
+    })
+    .catch(e => setLoadErr(e.message || 'Failed to load'))
+  useEffect(() => { load() }, [tick])
+
+  const pick = e => {
+    setEmail(e.email); setPlan(PLANS.includes(e.plan) ? e.plan : 'manual'); setDay(dayOf(e.validUntil))
+    setStatus(e.status === 'inactive' ? 'inactive' : 'active'); setEditing(true); setErr(null)
+  }
+  const clear = () => { setEmail(''); setPlan('mensal'); setDay(''); setStatus('active'); setEditing(false); setErr(null) }
+  const submit = async ev => {
+    ev.preventDefault()
+    if (busy) return
+    const mail = email.trim().toLowerCase()
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) { setErr('Type the e-mail the person bought with.'); return }
+    if (!day) { setErr('Pick the date the access lasts through.'); return }
+    setBusy(true); setErr(null)
+    try {
+      const d = await api('/api/admin/entitlements', { method: 'PUT', body: JSON.stringify({ email: mail, plan, validUntil: endOfDay(day), status }) })
+      setRows(d.entitlements); toast(editing ? 'Access updated' : 'Access granted'); clear()
+    } catch (e) { setErr(e.message || 'Could not save') }
+    finally { setBusy(false) }
+  }
+  const now = Date.now()
+
+  return <div className="card">
+    <h2 style={{ margin: 0 }}>Access</h2>
+    <div className="adm-lead">
+      {meta.mode
+        ? 'Paid access is on: only people with an active right below can sign up or save. Purchases and refunds arrive on their own from Cakto; use the form for the rest.'
+        : 'Paid access is off on this server (ACCESS_MODE), so nobody is blocked. Rights can be set up now, before turning it on.'}
+    </div>
+    {loadErr && <div role="alert" style={{ color: 'var(--red)', margin: '0 0 10px' }} className="small">
+      {loadErr} <button className="btn sm" style={{ marginInlineStart: 8 }} onClick={load}>Try again</button></div>}
+    <div className="list">
+      {(rows || []).map(e => {
+        const [label, tone] = rightState(e, now)
+        return <div key={e.email} className="item" onClick={() => pick(e)}>
+          <div className="grow"><div className="tt">{e.email} <span className={'adm-pill ' + tone} style={{ marginInlineStart: 4 }}>{label}</span>
+            {e.canceled && <span className="adm-pill" style={{ marginInlineStart: 4 }}>canceled</span>}</div>
+            <div className="ss">{e.plan || 'manual'} · until {e.validUntil ? fmtDate(dayOf(e.validUntil)) : '–'} · {e.userName ? 'profile ' + e.userName : 'not signed up yet'}</div></div>
+          <Icon name="chevronRight" className="chev" />
+        </div>
+      })}
+      {rows && !rows.length && <div className="adm-empty">No access rights yet. Purchases appear here by themselves; "Grant access" adds one by hand.</div>}
+      {!rows && !loadErr && <div className="muted small">Loading…</div>}
+    </div>
+    <h4 className="sec">{editing ? 'Adjust a right' : 'Grant access by hand'}</h4>
+    <form onSubmit={submit} noValidate>
+      <div className="adm-field"><label htmlFor="acc-email">E-mail</label>
+        <input id="acc-email" className="input field" type="email" name="email" autoComplete="off" autoCapitalize="none" spellCheck={false}
+          placeholder="person@example.com" value={email} onChange={e => setEmail(e.target.value)} /></div>
+      <div className="adm-field"><label htmlFor="acc-plan">Plan</label>
+        <select id="acc-plan" name="plan" className="adm-select" value={plan} onChange={e => setPlan(e.target.value)}>
+          {PLANS.map(p => <option key={p} value={p}>{p}</option>)}</select></div>
+      <div className="adm-field"><label htmlFor="acc-day">Access lasts through</label>
+        <input id="acc-day" className="input field" type="date" name="validUntil" value={day} onChange={e => setDay(e.target.value)} /></div>
+      <div className="adm-field"><label htmlFor="acc-status">Status</label>
+        <select id="acc-status" name="status" className="adm-select" value={status} onChange={e => setStatus(e.target.value)}>
+          <option value="active">active</option><option value="inactive">switched off</option></select></div>
+      {err && <div className="small" role="alert" style={{ color: 'var(--red)', margin: '0 0 8px' }}>{err}</div>}
+      <div className="adm-actions">
+        <Button type="submit" variant="primary" disabled={busy}>{editing ? 'Save changes' : 'Grant access'}</Button>
+        {editing && <Button type="button" onClick={clear}>Cancel</Button>}
+      </div>
+    </form>
+    <div className="adm-hint">The person signs up with this same e-mail and the right is linked to the new profile. Existing profiles are linked when their e-mail matches. A right keeps working for {meta.grace ?? 3} days after a missed payment.</div>
+  </div>
+}
+
 // Who signed in, who tried and failed, what an admin changed. A card rather than its own route:
 // the dashboard is deliberately one page of cards, and the 95 % use of this is a glance at the
 // last twenty events. Paging follows Library.jsx's house style — "Show more", not page numbers.
@@ -388,6 +487,8 @@ export default function Admin() {
     {/* The Coach setup. Renders nothing at all unless the instance offers the Coach, so an admin
         page on a box that never enabled it is byte-for-byte the page it was before. */}
     <div ref={coachRef} className="adm-coach-anchor"><AdminCoach /></div>
+
+    <AccessCard tick={tick} />
 
     <InvitesCard invites={invites} reload={loadInvites} inviteOnly={inviteOnly} />
 

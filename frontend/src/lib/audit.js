@@ -72,6 +72,9 @@ const LABELS = {
   'admin.owner.transfer': 'Handed the owner role on',
   'admin.invite.create': 'Created an invite code',
   'admin.invite.revoke': 'Revoked an invite code',
+  // Paid access (ACCESS_MODE): a right set by hand, and a Cakto notification the server refused.
+  'admin.entitlement.set': 'Set an access right',
+  'hook.cakto.denied': 'Refused a Cakto notification',
   'admin.audit.clear': 'Cleared the activity log',
   // FIRST_USER_ADMIN=1: the first profile on a fresh instance is made admin as it signs up.
   'admin.first-user': 'Became admin as the first profile',
@@ -102,6 +105,16 @@ const REASONS = {
   'unknown-name': 'no profile with a password has that name',
   'unknown-email': 'no profile with a password has that e-mail',
   'email-taken': 'another profile already uses that e-mail',
+  'no-subscription': 'no active subscription for that e-mail',
+  // Why a Cakto notification was refused (hook.cakto.denied).
+  'no-secret': 'no webhook secret is set on the server',
+  'bad-body': 'the body could not be read',
+  'bad-headers': 'the signature headers are missing',
+  'bad-timestamp': 'the timestamp is not valid',
+  'stale': 'the timestamp is too old or too new',
+  'bad-signature': 'the signature does not match the secret',
+  'bad-json': 'the body is not JSON',
+  'bad-secret': 'the secret in the body is wrong',
   'step-up-failed': 'the passkey confirming the change was rejected',
   'reset-invalid': 'wrong or expired reset code',
   'link-invalid': 'wrong, used or expired device code',

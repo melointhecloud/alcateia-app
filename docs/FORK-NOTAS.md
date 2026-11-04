@@ -459,3 +459,26 @@ Pontos para revisão humana:
   com `msg: 'no-subscription'`.
 - Ordem na D7: webhook só responde com `ACCESS_MODE` ligado, então compras anteriores à virada não entram; ligue o modo
   antes de apontar a Cakto para a URL.
+
+## D5: seção "Acessos" no painel admin (`frontend/src/views/Admin.jsx`)
+
+Card "Access" entre o Coach e os convites. Lista cada direito (e-mail, plano, situação, validade, perfil vinculado) e tem um
+formulário para criar ou ajustar. Testes: `Admin.access.test.jsx` (8) e 1 caso novo em `audit.test.js`. Onde nos afastamos do plano:
+
+- **Admin segue só em inglês.** O cabeçalho de `Admin.jsx` e de `lib/audit.js` diz que o painel do operador fica de propósito
+  fora dos packs de idioma. Por isso os textos novos do painel são literais em inglês, sem `t()`, e nenhuma chave nova entrou
+  nos 19 packs nesta task. Se o dono quiser o painel em pt-BR, é uma decisão para o painel inteiro, não só para esta seção.
+- **Sem `adminEntitlements()` / `adminGrantEntitlement()` em `lib/api.js`.** O resto do `Admin.jsx` chama `api('/api/admin/...')`
+  direto (convites, usuários, auditoria) e os testes do painel simulam só `api`; seguimos o padrão do arquivo. A rota é a que
+  a D3 expôs, `PUT /api/admin/entitlements` (não `POST .../grant`, que o plano previa).
+- **Validade = fim do dia escolhido, no fuso do navegador.** O campo é uma data; enviamos `23:59:59` local em ISO. Mandar só
+  `YYYY-MM-DD` viraria meia-noite UTC (21h do dia anterior no Brasil) e cortaria o último dia. Ao tocar numa linha o formulário
+  é preenchido com ela ("Adjust a right"); gravar de novo para o mesmo e-mail ajusta o direito (a rota já faz isso).
+- **Status no formulário** (`active` ou `switched off`): é o jeito de desligar um acesso à mão. A situação da lista é
+  `active`, `expired` (validade passada) ou `off`; "canceled" aparece à parte (período pago mantido).
+- Erros: falha de carga mostra a mensagem no card com "Try again"; erro do servidor ao gravar aparece no formulário (mensagens
+  do `grant` vêm em português do servidor, como estão). Estado vazio explica que as compras aparecem sozinhas.
+- O card avisa quando `ACCESS_MODE` está desligado (a rota funciona assim de propósito, para migrar perfis antigos antes de ligar).
+- `lib/audit.js`: rótulos para `admin.entitlement.set` e `hook.cakto.denied`, e motivos para `no-subscription` e os códigos de
+  recusa do webhook. Dois testes de `audit.test.js` já estavam vermelhos desde a D3 (a lista de eventos do servidor ganhou
+  eventos sem rótulo); ficam verdes aqui.

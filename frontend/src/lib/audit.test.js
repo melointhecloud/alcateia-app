@@ -111,6 +111,16 @@ describe('auditLine', () => {
       .toBe('Duarte · A1B2C3D4')
   })
 
+  it('labels the paid-access events', () => {
+    expect(auditLine({ ev: 'admin.entitlement.set', ok: true, name: 'Duarte', msg: 'a***@example.com' }).title).toBe('Set an access right')
+    expect(auditLine({ ev: 'admin.entitlement.set', ok: true, name: 'Duarte', msg: 'a***@example.com' }).sub).toBe('Duarte · a***@example.com')
+    const hook = auditLine({ ev: 'hook.cakto.denied', ok: false, msg: 'bad-signature' })
+    expect(hook.title).toBe('Refused a Cakto notification')
+    expect(hook.sub).toContain('signature')
+    expect(auditLine({ ev: 'auth.register.denied', ok: false, name: 'Ana', msg: 'no-subscription' }).sub)
+      .toBe('Ana · no active subscription for that e-mail')
+  })
+
   it('says "unknown caller" only when a failure carries no identity', () => {
     expect(auditLine({ ev: 'auth.login.fail', ok: false }).sub).toBe('unknown caller')
     // A successful event without a name is not an anonymous attacker, so it stays blank.

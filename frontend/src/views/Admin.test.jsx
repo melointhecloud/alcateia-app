@@ -51,6 +51,7 @@ beforeEach(() => {
   mocks.answers = {
     '/api/admin/users': { users: [{ id: 'u1', name: 'Mallory', workouts: 2, lastSync: null, disabled: false }], invite_only: false },
     '/api/admin/invites': { invites: [] },
+    '/api/admin/entitlements': { entitlements: [], access_mode: false },
     '/api/admin/audit': { rows: [] },
     '/api/admin/user': {
       user: { id: 'u1', name: 'Mallory', created: '2026-09-01T00:00:00Z', disabled: false, admin: false },
