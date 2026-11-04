@@ -3,7 +3,7 @@ export const BRAND = {
   name: 'Alcateia',
   short: 'Alcateia App',
   tagline: 'Seu plano de treino personalizado',
-  repoUrl: 'https://github.com/SEU-USUARIO/alcateia-app', // trocar pelo repo público real (Task A6)
+  repoUrl: 'https://github.com/melointhecloud/alcateia-app',
   upstreamName: 'openGym',
   upstreamUrl: 'https://github.com/DuarteSantos8/openGym',
   supportEmail: 'suporte@alcateiademonstros.com.br', // o mesmo support_email do quiz
